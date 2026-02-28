@@ -12,7 +12,7 @@
     h2 { font-size: 1.4em; color: #ccc; margin-bottom: 1.5em; letter-spacing: 2px; }
     .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
       max-width: 860px; margin: 0 auto 3em; padding: 0 20px; }
-    .card { border-radius: 16px; padding: 24px 16px; cursor: pointer;
+    .card { border-radius: 16px; padding: 24px 16px;
       transition: transform 0.2s, box-shadow 0.2s; border: 2px solid rgba(255,255,255,0.15); }
     .card:hover { transform: translateY(-6px) scale(1.03); box-shadow: 0 12px 32px rgba(0,0,0,0.5); }
     .icon { font-size: 3em; margin-bottom: 10px; }
@@ -20,6 +20,10 @@
     .element { font-size: 0.85em; font-weight: bold; text-transform: uppercase;
       letter-spacing: 1px; opacity: 0.85; margin-bottom: 8px; }
     .ability { font-size: 0.82em; color: #eee; line-height: 1.4; }
+    .btn-play { margin-top: 14px; padding: 8px 24px; border: none; border-radius: 20px;
+      background: rgba(255,255,255,0.2); color: #fff; font-size: 0.9em; font-weight: bold;
+      cursor: pointer; letter-spacing: 1px; transition: background 0.2s; }
+    .btn-play:hover { background: rgba(255,255,255,0.4); }
     .emberclaw  { background: linear-gradient(145deg, #3a0000, #8b1a00); }
     .frostfang  { background: linear-gradient(145deg, #00204a, #1a6ea8); }
     .tidesong   { background: linear-gradient(145deg, #002a2a, #0a6b6b); }
@@ -27,48 +31,144 @@
     .stormtalon { background: linear-gradient(145deg, #2a2200, #7a6000); }
     .shadowmend { background: linear-gradient(145deg, #1a002a, #4b0080); }
     @media (max-width: 600px) { .grid { grid-template-columns: repeat(2, 1fr); } h1 { font-size: 2.6em; } }
+    #game { display: none; flex-direction: column; align-items: center; padding: 20px 0; }
+    #game-title { font-size: 1.3em; color: #ccc; margin-bottom: 10px; }
+    #canvas { border: 2px solid #444; border-radius: 8px; display: block; max-width: 100%; }
+    #back-btn { margin-top: 14px; padding: 8px 22px; border: none; border-radius: 20px;
+      background: rgba(255,255,255,0.15); color: #fff; font-size: 0.9em; cursor: pointer; }
+    #back-btn:hover { background: rgba(255,255,255,0.3); }
   </style>
 </head>
 <body>
-  <h1>Dragon's World</h1>
-  <h2>Choose Your Dragon</h2>
-  <div class="grid">
-    <div class="card emberclaw">
-      <div class="icon">🔥</div>
-      <h3>Emberclaw</h3>
-      <div class="element" style="color:#ff6a00;">Fire</div>
-      <div class="ability">Breathes a blazing inferno that melts anything in its path!</div>
-    </div>
-    <div class="card frostfang">
-      <div class="icon">❄️</div>
-      <h3>Frostfang</h3>
-      <div class="element" style="color:#7dd6ff;">Ice</div>
-      <div class="ability">Freezes enemies solid with one mighty icy roar!</div>
-    </div>
-    <div class="card tidesong">
-      <div class="icon">🌊</div>
-      <h3>Tidesong</h3>
-      <div class="element" style="color:#00e5c8;">Ocean</div>
-      <div class="ability">Summons massive waves with a melodic battle cry!</div>
-    </div>
-    <div class="card verdenwing">
-      <div class="icon">🌿</div>
-      <h3>Verdenwing</h3>
-      <div class="element" style="color:#5ddb3a;">Forest</div>
-      <div class="ability">Grows enchanted vines to trap foes and heal allies!</div>
-    </div>
-    <div class="card stormtalon">
-      <div class="icon">⚡</div>
-      <h3>Stormtalon</h3>
-      <div class="element" style="color:#ffe033;">Sky</div>
-      <div class="ability">Calls down lightning bolts from thundering storm clouds!</div>
-    </div>
-    <div class="card shadowmend">
-      <div class="icon">🌑</div>
-      <h3>Shadowmend</h3>
-      <div class="element" style="color:#c87aff;">Dark</div>
-      <div class="ability">Vanishes into darkness and strikes from the shadows!</div>
+  <div id="selection">
+    <h1>Dragon's World</h1>
+    <h2>Choose Your Dragon</h2>
+    <div class="grid">
+      <div class="card emberclaw">
+        <div class="icon">🔥</div>
+        <h3>Emberclaw</h3>
+        <div class="element" style="color:#ff6a00;">Fire</div>
+        <div class="ability">Breathes a blazing inferno that melts anything in its path!</div>
+        <button class="btn-play" data-color="#ff4400">▶ Play</button>
+      </div>
+      <div class="card frostfang">
+        <div class="icon">❄️</div>
+        <h3>Frostfang</h3>
+        <div class="element" style="color:#7dd6ff;">Ice</div>
+        <div class="ability">Freezes enemies solid with one mighty icy roar!</div>
+        <button class="btn-play" data-color="#7dd6ff">▶ Play</button>
+      </div>
+      <div class="card tidesong">
+        <div class="icon">🌊</div>
+        <h3>Tidesong</h3>
+        <div class="element" style="color:#00e5c8;">Ocean</div>
+        <div class="ability">Summons massive waves with a melodic battle cry!</div>
+        <button class="btn-play" data-color="#00e5c8">▶ Play</button>
+      </div>
+      <div class="card verdenwing">
+        <div class="icon">🌿</div>
+        <h3>Verdenwing</h3>
+        <div class="element" style="color:#5ddb3a;">Forest</div>
+        <div class="ability">Grows enchanted vines to trap foes and heal allies!</div>
+        <button class="btn-play" data-color="#5ddb3a">▶ Play</button>
+      </div>
+      <div class="card stormtalon">
+        <div class="icon">⚡</div>
+        <h3>Stormtalon</h3>
+        <div class="element" style="color:#ffe033;">Sky</div>
+        <div class="ability">Calls down lightning bolts from thundering storm clouds!</div>
+        <button class="btn-play" data-color="#ffe033">▶ Play</button>
+      </div>
+      <div class="card shadowmend">
+        <div class="icon">🌑</div>
+        <h3>Shadowmend</h3>
+        <div class="element" style="color:#c87aff;">Dark</div>
+        <div class="ability">Vanishes into darkness and strikes from the shadows!</div>
+        <button class="btn-play" data-color="#c87aff">▶ Play</button>
+      </div>
     </div>
   </div>
+
+  <div id="game">
+    <div id="game-title"></div>
+    <canvas id="canvas" width="800" height="500"></canvas>
+    <button id="back-btn">← Back to Selection</button>
+  </div>
+
+  <script>
+    const sel = document.getElementById('selection');
+    const gameDiv = document.getElementById('game');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const zones = [
+      { label: 'Volcanic Wastes', color: '#c0392b', x: 0,   y: 0,   w: 400, h: 250 },
+      { label: 'Glacial Peaks',   color: '#aed6f1', x: 400, y: 0,   w: 400, h: 250 },
+      { label: 'Sunken Reef',     color: '#148f77', x: 0,   y: 250, w: 400, h: 250 },
+      { label: 'Ancient Canopy',  color: '#1e8449', x: 400, y: 250, w: 400, h: 250 },
+    ];
+
+    let player = { x: 400, y: 250, r: 12, color: '#fff', speed: 3 };
+    let keys = {};
+    let animId = null;
+
+    document.querySelectorAll('.btn-play').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        player.color = btn.dataset.color;
+        player.x = 400; player.y = 250;
+        const name = btn.closest('.card').querySelector('h3').textContent;
+        document.getElementById('game-title').textContent = `Playing as ${name} — Arrow keys or WASD to move`;
+        sel.style.display = 'none';
+        gameDiv.style.display = 'flex';
+        canvas.focus();
+        if (animId) cancelAnimationFrame(animId);
+        loop();
+      });
+    });
+
+    document.getElementById('back-btn').addEventListener('click', () => {
+      cancelAnimationFrame(animId);
+      animId = null;
+      gameDiv.style.display = 'none';
+      sel.style.display = 'block';
+    });
+
+    document.addEventListener('keydown', e => {
+      keys[e.key] = true;
+      if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+    });
+    document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+    function loop() {
+      const s = player.speed;
+      if (keys['ArrowLeft']  || keys['a'] || keys['A']) player.x -= s;
+      if (keys['ArrowRight'] || keys['d'] || keys['D']) player.x += s;
+      if (keys['ArrowUp']    || keys['w'] || keys['W']) player.y -= s;
+      if (keys['ArrowDown']  || keys['s'] || keys['S']) player.y += s;
+      player.x = Math.max(player.r, Math.min(canvas.width  - player.r, player.x));
+      player.y = Math.max(player.r, Math.min(canvas.height - player.r, player.y));
+
+      zones.forEach(z => {
+        ctx.fillStyle = z.color;
+        ctx.fillRect(z.x, z.y, z.w, z.h);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.font = 'bold 15px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(z.label, z.x + z.w / 2, z.y + z.h / 2);
+      });
+
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+      ctx.fillStyle = player.color;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      animId = requestAnimationFrame(loop);
+    }
+  </script>
 </body>
 </html>
