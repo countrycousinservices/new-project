@@ -2,9 +2,73 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dragon's World</title>
+  <style>
+    body { margin: 0; background: #0d0a1a; font-family: 'Segoe UI', sans-serif; text-align: center; color: #fff; }
+    h1 { font-size: 4em; margin: 0.4em 0 0.1em;
+      background: linear-gradient(90deg, red, orange, yellow, green, #00cfff, violet);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    h2 { font-size: 1.4em; color: #ccc; margin-bottom: 1.5em; letter-spacing: 2px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+      max-width: 860px; margin: 0 auto 3em; padding: 0 20px; }
+    .card { border-radius: 16px; padding: 24px 16px; cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s; border: 2px solid rgba(255,255,255,0.15); }
+    .card:hover { transform: translateY(-6px) scale(1.03); box-shadow: 0 12px 32px rgba(0,0,0,0.5); }
+    .icon { font-size: 3em; margin-bottom: 10px; }
+    .card h3 { margin: 0 0 6px; font-size: 1.3em; }
+    .element { font-size: 0.85em; font-weight: bold; text-transform: uppercase;
+      letter-spacing: 1px; opacity: 0.85; margin-bottom: 8px; }
+    .ability { font-size: 0.82em; color: #eee; line-height: 1.4; }
+    .emberclaw  { background: linear-gradient(145deg, #3a0000, #8b1a00); }
+    .frostfang  { background: linear-gradient(145deg, #00204a, #1a6ea8); }
+    .tidesong   { background: linear-gradient(145deg, #002a2a, #0a6b6b); }
+    .verdenwing { background: linear-gradient(145deg, #0a2200, #235e00); }
+    .stormtalon { background: linear-gradient(145deg, #2a2200, #7a6000); }
+    .shadowmend { background: linear-gradient(145deg, #1a002a, #4b0080); }
+    @media (max-width: 600px) { .grid { grid-template-columns: repeat(2, 1fr); } h1 { font-size: 2.6em; } }
+  </style>
 </head>
 <body>
-  <h1 style="font-size: 5em; background: linear-gradient(90deg, red, orange, yellow, green, blue, violet); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Coming Soon</h1>
+  <h1>Dragon's World</h1>
+  <h2>Choose Your Dragon</h2>
+  <div class="grid">
+    <div class="card emberclaw">
+      <div class="icon">🔥</div>
+      <h3>Emberclaw</h3>
+      <div class="element" style="color:#ff6a00;">Fire</div>
+      <div class="ability">Breathes a blazing inferno that melts anything in its path!</div>
+    </div>
+    <div class="card frostfang">
+      <div class="icon">❄️</div>
+      <h3>Frostfang</h3>
+      <div class="element" style="color:#7dd6ff;">Ice</div>
+      <div class="ability">Freezes enemies solid with one mighty icy roar!</div>
+    </div>
+    <div class="card tidesong">
+      <div class="icon">🌊</div>
+      <h3>Tidesong</h3>
+      <div class="element" style="color:#00e5c8;">Ocean</div>
+      <div class="ability">Summons massive waves with a melodic battle cry!</div>
+    </div>
+    <div class="card verdenwing">
+      <div class="icon">🌿</div>
+      <h3>Verdenwing</h3>
+      <div class="element" style="color:#5ddb3a;">Forest</div>
+      <div class="ability">Grows enchanted vines to trap foes and heal allies!</div>
+    </div>
+    <div class="card stormtalon">
+      <div class="icon">⚡</div>
+      <h3>Stormtalon</h3>
+      <div class="element" style="color:#ffe033;">Sky</div>
+      <div class="ability">Calls down lightning bolts from thundering storm clouds!</div>
+    </div>
+    <div class="card shadowmend">
+      <div class="icon">🌑</div>
+      <h3>Shadowmend</h3>
+      <div class="element" style="color:#c87aff;">Dark</div>
+      <div class="ability">Vanishes into darkness and strikes from the shadows!</div>
+    </div>
+  </div>
 </body>
 </html>
