@@ -33,7 +33,7 @@
     @media (max-width: 600px) { .grid { grid-template-columns: repeat(2, 1fr); } h1 { font-size: 2.6em; } }
     #game { display: none; flex-direction: column; align-items: center; padding: 20px 0; }
     #game-title { font-size: 1.3em; color: #ccc; margin-bottom: 10px; }
-    #canvas { border: 2px solid #444; border-radius: 8px; display: block; max-width: 100%; }
+    #canvas { border: 2px solid #444; border-radius: 8px; display: block; max-width: 100%; cursor: default; }
     #back-btn { margin-top: 14px; padding: 8px 22px; border: none; border-radius: 20px;
       background: rgba(255,255,255,0.15); color: #fff; font-size: 0.9em; cursor: pointer; }
     #back-btn:hover { background: rgba(255,255,255,0.3); }
@@ -100,25 +100,153 @@
     const gameDiv = document.getElementById('game');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height, MAP = 2000;
 
-    const zones = [
-      { label: 'Volcanic Wastes', color: '#c0392b', x: 0,   y: 0,   w: 400, h: 250 },
-      { label: 'Glacial Peaks',   color: '#aed6f1', x: 400, y: 0,   w: 400, h: 250 },
-      { label: 'Sunken Reef',     color: '#148f77', x: 0,   y: 250, w: 400, h: 250 },
-      { label: 'Ancient Canopy',  color: '#1e8449', x: 400, y: 250, w: 400, h: 250 },
+    const ZONES = [
+      { label: 'Volcanic Wastes', color: '#5a1000', x: 0,    y: 0,    w: 1000, h: 1000 },
+      { label: 'Glacial Peaks',   color: '#082240', x: 1000, y: 0,    w: 1000, h: 1000 },
+      { label: 'Sunken Reef',     color: '#003020', x: 0,    y: 1000, w: 1000, h: 1000 },
+      { label: 'Ancient Canopy',  color: '#052000', x: 1000, y: 1000, w: 1000, h: 1000 },
     ];
 
-    let player = { x: 400, y: 250, r: 12, color: '#fff', speed: 3 };
+    let state, player, eggs, voidwyrm, cam, startTime, elapsed, animId, currentName = '';
     let keys = {};
-    let animId = null;
+
+    function initGame(color, name) {
+      state = 'playing';
+      currentName = name;
+      player = { x: MAP / 2, y: MAP / 2, r: 12, color, speed: 3.5 };
+      eggs = [];
+      while (eggs.length < 5) {
+        let ex = 150 + Math.random() * (MAP - 300);
+        let ey = 150 + Math.random() * (MAP - 300);
+        if (Math.hypot(ex - player.x, ey - player.y) > 260) eggs.push({ x: ex, y: ey, r: 10, collected: false });
+      }
+      voidwyrm = { x: 80, y: 80, r: 18, speed: 1.1 };
+      cam = { x: 0, y: 0 };
+      startTime = Date.now(); elapsed = 0;
+      document.getElementById('game-title').textContent = `${name} — Collect 5 eggs! Dodge the Voidwyrm!`;
+    }
+
+    function circ(x, y, r, fill, stroke, lw) {
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = fill; ctx.fill();
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 2; ctx.stroke(); }
+    }
+
+    function drawGame() {
+      cam.x = Math.max(0, Math.min(MAP - W, player.x - W / 2));
+      cam.y = Math.max(0, Math.min(MAP - H, player.y - H / 2));
+
+      ctx.save();
+      ctx.translate(-cam.x, -cam.y);
+
+      // Zone backgrounds
+      ZONES.forEach(z => {
+        ctx.fillStyle = z.color; ctx.fillRect(z.x, z.y, z.w, z.h);
+        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+        ctx.font = 'bold 38px Segoe UI'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(z.label, z.x + z.w / 2, z.y + z.h / 2);
+      });
+
+      // Grid texture
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
+      for (let i = 0; i <= MAP; i += 100) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, MAP); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(MAP, i); ctx.stroke();
+      }
+
+      // Glowing eggs
+      let t = Date.now() / 400;
+      eggs.forEach(egg => {
+        if (egg.collected) return;
+        ctx.save();
+        ctx.shadowColor = '#ffe066'; ctx.shadowBlur = 16 + Math.sin(t) * 8;
+        circ(egg.x, egg.y, egg.r, '#fffab0', '#ffe066', 2);
+        ctx.restore();
+      });
+
+      // Voidwyrm
+      ctx.save();
+      ctx.shadowColor = '#8800dd'; ctx.shadowBlur = 26;
+      circ(voidwyrm.x, voidwyrm.y, voidwyrm.r, '#1a003a', '#aa33ff', 3);
+      ctx.restore();
+
+      // Player
+      ctx.save();
+      ctx.shadowColor = player.color; ctx.shadowBlur = 20;
+      circ(player.x, player.y, player.r, player.color, '#fff', 2);
+      ctx.restore();
+
+      ctx.restore(); // end camera translate
+
+      // HUD
+      let collected = eggs.filter(e => e.collected).length;
+      let mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+      let secs = String(elapsed % 60).padStart(2, '0');
+      ctx.fillStyle = 'rgba(0,0,0,0.62)'; ctx.fillRect(8, 8, 200, 56);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 15px Segoe UI';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText(`Time: ${mins}:${secs}`, 18, 16);
+      ctx.fillText(`Eggs: ${collected} / 5`, 18, 38);
+
+      // Game-over / win overlay
+      if (state !== 'playing') {
+        ctx.fillStyle = 'rgba(0,0,0,0.74)'; ctx.fillRect(0, 0, W, H);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = 'bold 54px Segoe UI';
+        ctx.fillStyle = state === 'win' ? '#ffe033' : '#ff3344';
+        ctx.fillText(state === 'win' ? '🏆 YOU WIN!' : '💀 GAME OVER', W / 2, H / 2 - 58);
+        ctx.font = '20px Segoe UI'; ctx.fillStyle = '#ccc';
+        ctx.fillText(`Time: ${mins}:${secs}  •  Eggs: ${collected} / 5`, W / 2, H / 2 + 2);
+        // Play Again button
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(W / 2 - 78, H / 2 + 36, 156, 46);
+        ctx.fillStyle = '#111'; ctx.font = 'bold 17px Segoe UI';
+        ctx.fillText('Play Again', W / 2, H / 2 + 59);
+      }
+    }
+
+    function loop() {
+      if (state === 'playing') {
+        elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const s = player.speed;
+        if (keys['ArrowLeft']  || keys['a'] || keys['A']) player.x -= s;
+        if (keys['ArrowRight'] || keys['d'] || keys['D']) player.x += s;
+        if (keys['ArrowUp']    || keys['w'] || keys['W']) player.y -= s;
+        if (keys['ArrowDown']  || keys['s'] || keys['S']) player.y += s;
+        player.x = Math.max(player.r, Math.min(MAP - player.r, player.x));
+        player.y = Math.max(player.r, Math.min(MAP - player.r, player.y));
+
+        let dx = player.x - voidwyrm.x, dy = player.y - voidwyrm.y, d = Math.hypot(dx, dy);
+        if (d > 1) { voidwyrm.x += (dx / d) * voidwyrm.speed; voidwyrm.y += (dy / d) * voidwyrm.speed; }
+        if (d < player.r + voidwyrm.r) state = 'gameover';
+
+        eggs.forEach(egg => {
+          if (!egg.collected && Math.hypot(player.x - egg.x, player.y - egg.y) < player.r + egg.r)
+            egg.collected = true;
+        });
+        if (eggs.every(e => e.collected)) state = 'win';
+      }
+      drawGame();
+      animId = requestAnimationFrame(loop);
+    }
+
+    // Play Again via canvas click
+    canvas.addEventListener('click', e => {
+      if (state !== 'win' && state !== 'gameover') return;
+      const r = canvas.getBoundingClientRect();
+      const cx = (e.clientX - r.left) * (W / r.width);
+      const cy = (e.clientY - r.top)  * (H / r.height);
+      if (cx > W/2-78 && cx < W/2+78 && cy > H/2+36 && cy < H/2+82)
+        initGame(player.color, currentName);
+    });
 
     document.querySelectorAll('.btn-play').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
-        player.color = btn.dataset.color;
-        player.x = 400; player.y = 250;
+        const color = btn.dataset.color;
         const name = btn.closest('.card').querySelector('h3').textContent;
-        document.getElementById('game-title').textContent = `Playing as ${name} — Arrow keys or WASD to move`;
+        initGame(color, name);
         sel.style.display = 'none';
         gameDiv.style.display = 'flex';
         canvas.focus();
@@ -128,8 +256,7 @@
     });
 
     document.getElementById('back-btn').addEventListener('click', () => {
-      cancelAnimationFrame(animId);
-      animId = null;
+      if (animId) { cancelAnimationFrame(animId); animId = null; }
       gameDiv.style.display = 'none';
       sel.style.display = 'block';
     });
@@ -139,36 +266,6 @@
       if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
     });
     document.addEventListener('keyup', e => { keys[e.key] = false; });
-
-    function loop() {
-      const s = player.speed;
-      if (keys['ArrowLeft']  || keys['a'] || keys['A']) player.x -= s;
-      if (keys['ArrowRight'] || keys['d'] || keys['D']) player.x += s;
-      if (keys['ArrowUp']    || keys['w'] || keys['W']) player.y -= s;
-      if (keys['ArrowDown']  || keys['s'] || keys['S']) player.y += s;
-      player.x = Math.max(player.r, Math.min(canvas.width  - player.r, player.x));
-      player.y = Math.max(player.r, Math.min(canvas.height - player.r, player.y));
-
-      zones.forEach(z => {
-        ctx.fillStyle = z.color;
-        ctx.fillRect(z.x, z.y, z.w, z.h);
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.font = 'bold 15px Segoe UI';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(z.label, z.x + z.w / 2, z.y + z.h / 2);
-      });
-
-      ctx.beginPath();
-      ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
-      ctx.fillStyle = player.color;
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      animId = requestAnimationFrame(loop);
-    }
   </script>
 </body>
 </html>
