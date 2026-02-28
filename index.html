@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dragon's World</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a0a2e;color:#fff;font-family:'Segoe UI',sans-serif;min-height:100vh}
+#selection{display:flex;flex-direction:column;align-items:center;padding:40px 20px}
+h1{font-size:3rem;color:#f0a500;text-shadow:0 0 20px #f0a500;margin-bottom:8px}
+.subtitle{color:#aaa;margin-bottom:40px;font-size:1.1rem}
+.cards{display:flex;flex-wrap:wrap;gap:20px;justify-content:center;max-width:900px}
+.card{background:linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:24px;width:240px;text-align:center;transition:transform .2s,border-color .2s}
+.card:hover{transform:translateY(-4px);border-color:rgba(255,255,255,.35)}
+.card-icon{font-size:3rem;margin-bottom:12px}
+.card h2{font-size:1.1rem;margin-bottom:6px}
+.card p{font-size:.82rem;color:#bbb;margin-bottom:16px;line-height:1.4}
+.play-btn{background:linear-gradient(135deg,#f0a500,#e06000);border:none;color:#fff;padding:9px 28px;border-radius:20px;cursor:pointer;font-size:.9rem;font-weight:600;transition:opacity .2s;width:100%}
+.play-btn:hover{opacity:.85}
+#game{display:none;flex-direction:column;align-items:center;padding:20px}
+#game h2{font-size:1.6rem;color:#f0a500;margin-bottom:12px}
+canvas{border:2px solid rgba(255,255,255,.2);border-radius:8px}
+.hint{margin-top:10px;font-size:.8rem;color:#888}
+#back{background:transparent;border:1px solid #555;color:#aaa;padding:7px 20px;border-radius:16px;cursor:pointer;margin-top:14px;font-size:.85rem}
+#back:hover{border-color:#aaa;color:#fff}
+</style>
+</head>
+<body>
+
+<div id="selection">
+  <h1>Dragon's World</h1>
+  <p class="subtitle">Choose your dragon tribe</p>
+  <div class="cards">
+    <div class="card" data-color="#e05050">
+      <div class="card-icon">🔥</div>
+      <h2>Ember Clan</h2>
+      <p>Masters of volcanic fire, forged in the heat of the deep earth.</p>
+      <button class="play-btn">Play</button>
+    </div>
+    <div class="card" data-color="#50aaff">
+      <div class="card-icon">❄️</div>
+      <h2>Frost Wing</h2>
+      <p>Ancient ice dragons who soar above frozen mountain peaks.</p>
+      <button class="play-btn">Play</button>
+    </div>
+    <div class="card" data-color="#20c8a0">
+      <div class="card-icon">🌊</div>
+      <h2>Reef Serpent</h2>
+      <p>Sleek sea dragons gliding through bioluminescent ocean depths.</p>
+      <button class="play-btn">Play</button>
+    </div>
+    <div class="card" data-color="#50c050">
+      <div class="card-icon">🌿</div>
+      <h2>Canopy Drake</h2>
+      <p>Camouflaged forest guardians of the ancient woodland realm.</p>
+      <button class="play-btn">Play</button>
+    </div>
+    <div class="card" data-color="#c080ff">
+      <div class="card-icon">⚡</div>
+      <h2>Storm Rider</h2>
+      <p>Electrified dragons born in the heart of raging thunderstorms.</p>
+      <button class="play-btn">Play</button>
+    </div>
+    <div class="card" data-color="#ffcc44">
+      <div class="card-icon">☀️</div>
+      <h2>Solar Scale</h2>
+      <p>Golden dragons who draw power from the blazing midday sun.</p>
+      <button class="play-btn">Play</button>
+    </div>
+  </div>
+</div>
+
+<div id="game">
+  <h2 id="tribe-name"></h2>
+  <canvas id="canvas" width="700" height="500"></canvas>
+  <p class="hint">Arrow keys or WASD to move</p>
+  <button id="back">← Back to tribe selection</button>
+</div>
+
+<script>
+const ZONES = [
+  {label:'Volcanic Wastes', color:'#c0302a', x:0,   y:0,   w:.5, h:.5},
+  {label:'Glacial Peaks',   color:'#8acfe8', x:.5,  y:0,   w:.5, h:.5},
+  {label:'Sunken Reef',     color:'#1a9e8a', x:0,   y:.5,  w:.5, h:.5},
+  {label:'Ancient Canopy',  color:'#2d8a40', x:.5,  y:.5,  w:.5, h:.5},
+];
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+let player = {x:W/2, y:H/2, r:10, color:'#fff', speed:3};
+const keys = {};
+let raf;
+
+document.querySelectorAll('.play-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const card = btn.closest('.card');
+    const tribeName = card.querySelector('h2').textContent;
+    player.color = card.dataset.color;
+    player.x = W/2; player.y = H/2;
+    document.getElementById('tribe-name').textContent = tribeName;
+    document.getElementById('selection').style.display = 'none';
+    document.getElementById('game').style.display = 'flex';
+    cancelAnimationFrame(raf);
+    loop();
+  });
+});
+
+document.getElementById('back').addEventListener('click', () => {
+  cancelAnimationFrame(raf);
+  document.getElementById('game').style.display = 'none';
+  document.getElementById('selection').style.display = 'flex';
+});
+
+document.addEventListener('keydown', e => keys[e.key] = true);
+document.addEventListener('keyup',   e => keys[e.key] = false);
+
+function drawZones() {
+  ZONES.forEach(z => {
+    ctx.fillStyle = z.color;
+    ctx.fillRect(z.x*W, z.y*H, z.w*W, z.h*H);
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.font = 'bold 14px Segoe UI';
+    ctx.textAlign = 'center';
+    ctx.fillText(z.label, (z.x + z.w/2)*W, (z.y + z.h/2)*H);
+  });
+  ctx.strokeStyle = 'rgba(0,0,0,.4)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(W/2, 0, 0, H);
+  ctx.strokeRect(0, H/2, W, 0);
+}
+
+function drawPlayer() {
+  ctx.beginPath();
+  ctx.arc(player.x, player.y, player.r, 0, Math.PI*2);
+  ctx.fillStyle = player.color;
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function update() {
+  const s = player.speed;
+  if (keys['ArrowUp']    || keys['w'] || keys['W']) player.y = Math.max(player.r, player.y - s);
+  if (keys['ArrowDown']  || keys['s'] || keys['S']) player.y = Math.min(H - player.r, player.y + s);
+  if (keys['ArrowLeft']  || keys['a'] || keys['A']) player.x = Math.max(player.r, player.x - s);
+  if (keys['ArrowRight'] || keys['d'] || keys['D']) player.x = Math.min(W - player.r, player.x + s);
+}
+
+function loop() {
+  update();
+  ctx.clearRect(0, 0, W, H);
+  drawZones();
+  drawPlayer();
+  raf = requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>
