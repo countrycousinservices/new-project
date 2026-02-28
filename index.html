@@ -96,11 +96,9 @@
   </div>
 
   <script>
-    const sel = document.getElementById('selection');
-    const gameDiv = document.getElementById('game');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height, MAP = 2000;
+    const sel = document.getElementById('selection'), gameDiv = document.getElementById('game');
+    const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height, MAP = 2000, CD = 10000;
 
     const ZONES = [
       { label: 'Volcanic Wastes', color: '#5a1000', x: 0,    y: 0,    w: 1000, h: 1000 },
@@ -109,23 +107,56 @@
       { label: 'Ancient Canopy',  color: '#052000', x: 1000, y: 1000, w: 1000, h: 1000 },
     ];
 
-    let state, player, eggs, voidwyrm, cam, startTime, elapsed, animId, currentName = '';
-    let keys = {};
+    // [fracX, fracY, radius] within each zone
+    const OBS_POS = [
+      [[.18,.28,28],[.68,.18,22],[.42,.62,32],[.78,.52,18],[.12,.75,26],[.52,.38,20]],
+      [[.22,.22,22],[.60,.16,26],[.38,.64,20],[.74,.50,24],[.48,.78,22],[.14,.50,18]],
+      [[.28,.24,20],[.64,.34,18],[.20,.64,24],[.70,.68,26],[.45,.46,16],[.84,.18,22]],
+      [[.18,.38,30],[.60,.22,24],[.40,.74,20],[.74,.56,28],[.10,.18,18],[.54,.84,22]],
+    ];
+    const OBS_FILL = ['#7a1a00','#1a3a55','#004433','#0e3a00'];
+    const OBS_GLOW = ['#ff5500','#77bbff','#00cc88','#44cc00'];
+
+    const ABILITY_LABEL = {
+      Emberclaw:'Fire Blast', Frostfang:'Ice Wall', Tidesong:'Speed Boost',
+      Verdenwing:'Invisibility', Stormtalon:'Dash', Shadowmend:'Freeze All'
+    };
+
+    let state, player, wyrms, obstacles, eggs, goldenEgg, blasts, cam, startTime, elapsed, animId;
+    let keys = {}, currentName = '';
+
+    function makeObs() {
+      const obs = [];
+      ZONES.forEach((z, zi) => OBS_POS[zi].forEach(([fx, fy, r]) =>
+        obs.push({ x: z.x + z.w * fx, y: z.y + z.h * fy, r, destroyed: false,
+                   fill: OBS_FILL[zi], glow: OBS_GLOW[zi] })
+      ));
+      return obs;
+    }
+
+    function makeWyrms() {
+      const t = Date.now() + 4000; // first Thornwyrm teleport delay
+      return [
+        { x:150,  y:150,  r:16, bR:16, speed:2.0,  bS:2.0,  fill:'#aa1100', glow:'#ff4400', zone:0, frozen:0, gt:0 },
+        { x:1850, y:150,  r:26, bR:26, speed:0.65, bS:0.65, fill:'#cce8ff', glow:'#99ccff', zone:1, frozen:0, gt:0 },
+        { x:150,  y:1850, r:16, bR:16, speed:1.3,  bS:1.3,  fill:'#00aa88', glow:'#00ffcc', zone:2, frozen:0, gt:0, wave:0 },
+        { x:1850, y:1850, r:16, bR:16, speed:1.4,  bS:1.4,  fill:'#1a5500', glow:'#44cc00', zone:3, frozen:0, gt:0, tCD:t },
+      ];
+    }
 
     function initGame(color, name) {
-      state = 'playing';
-      currentName = name;
-      player = { x: MAP / 2, y: MAP / 2, r: 12, color, speed: 3.5 };
-      eggs = [];
-      while (eggs.length < 5) {
-        let ex = 150 + Math.random() * (MAP - 300);
-        let ey = 150 + Math.random() * (MAP - 300);
-        if (Math.hypot(ex - player.x, ey - player.y) > 260) eggs.push({ x: ex, y: ey, r: 10, collected: false });
-      }
-      voidwyrm = { x: 80, y: 80, r: 18, speed: 1.1 };
-      cam = { x: 0, y: 0 };
-      startTime = Date.now(); elapsed = 0;
-      document.getElementById('game-title').textContent = `${name} — Collect 5 eggs! Dodge the Voidwyrm!`;
+      state = 'playing'; currentName = name;
+      player = { x:MAP/2, y:MAP/2, r:12, color, speed:3.5, name,
+                 abCD:0, speedBoost:0, invis:0, facing:{x:1,y:0} };
+      wyrms = makeWyrms(); obstacles = makeObs(); blasts = [];
+      eggs = ZONES.map((z, zi) => ({
+        x: z.x + 100 + Math.random() * (z.w - 200),
+        y: z.y + 100 + Math.random() * (z.h - 200),
+        r: 10, collected: false, zone: zi
+      }));
+      goldenEgg = null; cam = { x:0, y:0 }; startTime = Date.now(); elapsed = 0;
+      document.getElementById('game-title').textContent =
+        `${name} — SPACE: ${ABILITY_LABEL[name]} (10s CD) | Collect 4 zone eggs, then the Golden Egg!`;
     }
 
     function circ(x, y, r, fill, stroke, lw) {
@@ -134,136 +165,262 @@
       if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 2; ctx.stroke(); }
     }
 
+    // Returns true if (x,y) with radius r doesn't overlap any active obstacle
+    function free(x, y, r) {
+      for (const o of obstacles) if (!o.destroyed && Math.hypot(x - o.x, y - o.y) < r + o.r) return false;
+      return true;
+    }
+
+    function useAbility() {
+      const now = Date.now();
+      if (now < player.abCD) return;
+      player.abCD = now + CD;
+      const { x: fx, y: fy } = player.facing;
+      switch (player.name) {
+        case 'Emberclaw':
+          blasts.push({ x: player.x, y: player.y, dx: fx, dy: fy, r: 7, spd: 11 }); break;
+        case 'Frostfang':
+          obstacles.push({ x: player.x - fx * 44, y: player.y - fy * 44, r: 26, destroyed: false,
+                           expires: now + 3000, fill: '#aadeff', glow: '#ffffff', temp: true }); break;
+        case 'Tidesong':  player.speedBoost = now + 3000; break;
+        case 'Verdenwing': player.invis = now + 4000; break;
+        case 'Stormtalon': {
+          const nx = Math.max(player.r, Math.min(MAP - player.r, player.x + fx * 230));
+          const ny = Math.max(player.r, Math.min(MAP - player.r, player.y + fy * 230));
+          if (free(nx, ny, player.r)) { player.x = nx; player.y = ny; } break;
+        }
+        case 'Shadowmend': wyrms.forEach(w => w.frozen = now + 5000); break;
+      }
+    }
+
+    function updateWyrm(w, now) {
+      if (w.frozen > now) return;
+      const z = ZONES[w.zone];
+      // If player is invisible, wyrm wanders toward zone centre instead
+      const tx = player.invis > now ? z.x + z.w / 2 : player.x;
+      const ty = player.invis > now ? z.y + z.h / 2 : player.y;
+      let dx = tx - w.x, dy = ty - w.y, d = Math.hypot(dx, dy) || 1;
+      let mx = 0, my = 0;
+
+      if (w.wave !== undefined) {           // Tidewyrm — sinusoidal weave
+        w.wave += 0.05;
+        const a = Math.atan2(dy, dx), px = Math.cos(a + 1.5708), py = Math.sin(a + 1.5708);
+        mx = (dx / d) * w.speed + px * Math.sin(w.wave) * 2.5;
+        my = (dy / d) * w.speed + py * Math.sin(w.wave) * 2.5;
+      } else if (w.tCD !== undefined) {     // Thornwyrm — teleport bursts
+        if (now > w.tCD && d > 180) {
+          w.tCD = now + 3000;
+          const leap = 120 + Math.random() * 110;
+          w.x = Math.max(z.x + w.r, Math.min(z.x + z.w - w.r, w.x + (dx / d) * leap));
+          w.y = Math.max(z.y + w.r, Math.min(z.y + z.h - w.r, w.y + (dy / d) * leap));
+        }
+        mx = (dx / d) * w.speed; my = (dy / d) * w.speed;
+      } else {
+        mx = (dx / d) * w.speed; my = (dy / d) * w.speed;
+      }
+
+      w.x += mx; w.y += my;
+
+      // Push wyrm away from temporary ice-wall obstacles
+      for (const o of obstacles) {
+        if (!o.destroyed && o.temp) {
+          const od = Math.hypot(w.x - o.x, w.y - o.y) || 1;
+          if (od < w.r + o.r) {
+            const push = (w.r + o.r - od + 1) / od;
+            w.x += (w.x - o.x) * push; w.y += (w.y - o.y) * push;
+          }
+        }
+      }
+
+      // Clamp to zone
+      w.x = Math.max(z.x + w.r, Math.min(z.x + z.w - w.r, w.x));
+      w.y = Math.max(z.y + w.r, Math.min(z.y + z.h - w.r, w.y));
+
+      // 20% growth every 30 s
+      const gs = Math.floor(elapsed / 30);
+      if (gs > w.gt) { w.gt = gs; w.r = w.bR * (1 + gs * 0.2); w.speed = w.bS * (1 + gs * 0.2); }
+    }
+
     function drawGame() {
+      const now = Date.now(), t = now / 400;
       cam.x = Math.max(0, Math.min(MAP - W, player.x - W / 2));
       cam.y = Math.max(0, Math.min(MAP - H, player.y - H / 2));
+      ctx.save(); ctx.translate(-cam.x, -cam.y);
 
-      ctx.save();
-      ctx.translate(-cam.x, -cam.y);
-
-      // Zone backgrounds
+      // Zone backgrounds + labels
       ZONES.forEach(z => {
         ctx.fillStyle = z.color; ctx.fillRect(z.x, z.y, z.w, z.h);
-        ctx.fillStyle = 'rgba(255,255,255,0.05)';
-        ctx.font = 'bold 38px Segoe UI'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.font = 'bold 38px Segoe UI';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(z.label, z.x + z.w / 2, z.y + z.h / 2);
       });
 
-      // Grid texture
+      // Grid
       ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
       for (let i = 0; i <= MAP; i += 100) {
         ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, MAP); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(MAP, i); ctx.stroke();
       }
 
-      // Glowing eggs
-      let t = Date.now() / 400;
-      eggs.forEach(egg => {
-        if (egg.collected) return;
-        ctx.save();
-        ctx.shadowColor = '#ffe066'; ctx.shadowBlur = 16 + Math.sin(t) * 8;
-        circ(egg.x, egg.y, egg.r, '#fffab0', '#ffe066', 2);
-        ctx.restore();
+      // Obstacles
+      obstacles.forEach(o => {
+        if (o.destroyed) return;
+        ctx.save(); ctx.shadowColor = o.glow; ctx.shadowBlur = o.temp ? 20 : 10;
+        circ(o.x, o.y, o.r, o.fill, o.glow, 2); ctx.restore();
       });
 
-      // Voidwyrm
-      ctx.save();
-      ctx.shadowColor = '#8800dd'; ctx.shadowBlur = 26;
-      circ(voidwyrm.x, voidwyrm.y, voidwyrm.r, '#1a003a', '#aa33ff', 3);
-      ctx.restore();
+      // Zone eggs
+      eggs.forEach(egg => {
+        if (egg.collected) return;
+        ctx.save(); ctx.shadowColor = '#ffe066'; ctx.shadowBlur = 14 + Math.sin(t) * 7;
+        circ(egg.x, egg.y, egg.r, '#fffab0', '#ffe066', 2); ctx.restore();
+      });
 
-      // Player
+      // Golden egg
+      if (goldenEgg && !goldenEgg.collected) {
+        ctx.save(); ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 24 + Math.sin(t * 1.5) * 10;
+        circ(goldenEgg.x, goldenEgg.y, 15, '#ffd700', '#ffffff', 3); ctx.restore();
+      }
+
+      // Fire blasts
+      blasts.forEach(b => {
+        ctx.save(); ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 16;
+        circ(b.x, b.y, b.r, '#ff8800', '#ffcc00', 2); ctx.restore();
+      });
+
+      // Wyrms
+      wyrms.forEach(w => {
+        ctx.save(); ctx.shadowColor = w.glow; ctx.shadowBlur = 22;
+        if (w.frozen > now) ctx.globalAlpha = 0.4;
+        circ(w.x, w.y, w.r, w.fill, w.glow, 3); ctx.restore();
+      });
+
+      // Player (semi-transparent when invisible)
       ctx.save();
+      if (player.invis > now) ctx.globalAlpha = 0.28;
       ctx.shadowColor = player.color; ctx.shadowBlur = 20;
-      circ(player.x, player.y, player.r, player.color, '#fff', 2);
-      ctx.restore();
+      circ(player.x, player.y, player.r, player.color, '#fff', 2); ctx.restore();
 
-      ctx.restore(); // end camera translate
+      ctx.restore(); // end camera
 
-      // HUD
-      let collected = eggs.filter(e => e.collected).length;
-      let mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
-      let secs = String(elapsed % 60).padStart(2, '0');
-      ctx.fillStyle = 'rgba(0,0,0,0.62)'; ctx.fillRect(8, 8, 200, 56);
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 15px Segoe UI';
+      // ── HUD ──
+      const coll = eggs.filter(e => e.collected).length;
+      const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+      const secs = String(elapsed % 60).padStart(2, '0');
+      ctx.fillStyle = 'rgba(0,0,0,0.68)'; ctx.fillRect(8, 8, 248, 96);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Segoe UI';
       ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      ctx.fillText(`Time: ${mins}:${secs}`, 18, 16);
-      ctx.fillText(`Eggs: ${collected} / 5`, 18, 38);
+      ctx.fillText(`Time: ${mins}:${secs}`, 18, 14);
+      ctx.fillText(`Zone Eggs: ${coll}/4${goldenEgg ? '  ★ Golden Egg on map!' : ''}`, 18, 34);
+      const cdLeft = Math.max(0, Math.ceil((player.abCD - now) / 1000));
+      ctx.fillStyle = cdLeft ? '#ff9944' : '#88ff55';
+      ctx.fillText(`SPACE: ${ABILITY_LABEL[player.name]}${cdLeft ? ` (${cdLeft}s)` : ' — READY'}`, 18, 54);
+      const fx = [];
+      if (player.speedBoost > now) fx.push(`Boost ${Math.ceil((player.speedBoost - now) / 1000)}s`);
+      if (player.invis > now)      fx.push(`Invis ${Math.ceil((player.invis - now) / 1000)}s`);
+      const maxFrz = Math.max(...wyrms.map(w => w.frozen));
+      if (maxFrz > now) fx.push(`Freeze ${Math.ceil((maxFrz - now) / 1000)}s`);
+      if (fx.length) { ctx.fillStyle = '#88ffff'; ctx.fillText('▶ ' + fx.join(' | '), 18, 74); }
 
-      // Game-over / win overlay
+      // ── Game over / win overlay ──
       if (state !== 'playing') {
-        ctx.fillStyle = 'rgba(0,0,0,0.74)'; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = 'rgba(0,0,0,0.76)'; ctx.fillRect(0, 0, W, H);
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.font = 'bold 54px Segoe UI';
-        ctx.fillStyle = state === 'win' ? '#ffe033' : '#ff3344';
+        ctx.fillStyle = state === 'win' ? '#ffd700' : '#ff3344';
         ctx.fillText(state === 'win' ? '🏆 YOU WIN!' : '💀 GAME OVER', W / 2, H / 2 - 58);
         ctx.font = '20px Segoe UI'; ctx.fillStyle = '#ccc';
-        ctx.fillText(`Time: ${mins}:${secs}  •  Eggs: ${collected} / 5`, W / 2, H / 2 + 2);
-        // Play Again button
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(W / 2 - 78, H / 2 + 36, 156, 46);
-        ctx.fillStyle = '#111'; ctx.font = 'bold 17px Segoe UI';
+        ctx.fillText(`Time: ${mins}:${secs}  •  Zone Eggs: ${coll}/4`, W / 2, H / 2 + 2);
+        ctx.fillStyle = '#fff'; ctx.fillRect(W / 2 - 80, H / 2 + 36, 160, 46);
+        ctx.fillStyle = '#111'; ctx.font = 'bold 18px Segoe UI';
         ctx.fillText('Play Again', W / 2, H / 2 + 59);
       }
     }
 
     function loop() {
+      const now = Date.now();
       if (state === 'playing') {
-        elapsed = Math.floor((Date.now() - startTime) / 1000);
-        const s = player.speed;
-        if (keys['ArrowLeft']  || keys['a'] || keys['A']) player.x -= s;
-        if (keys['ArrowRight'] || keys['d'] || keys['D']) player.x += s;
-        if (keys['ArrowUp']    || keys['w'] || keys['W']) player.y -= s;
-        if (keys['ArrowDown']  || keys['s'] || keys['S']) player.y += s;
-        player.x = Math.max(player.r, Math.min(MAP - player.r, player.x));
-        player.y = Math.max(player.r, Math.min(MAP - player.r, player.y));
+        elapsed = Math.floor((now - startTime) / 1000);
 
-        let dx = player.x - voidwyrm.x, dy = player.y - voidwyrm.y, d = Math.hypot(dx, dy);
-        if (d > 1) { voidwyrm.x += (dx / d) * voidwyrm.speed; voidwyrm.y += (dy / d) * voidwyrm.speed; }
-        if (d < player.r + voidwyrm.r) state = 'gameover';
+        // Movement (separated axes for obstacle sliding)
+        const fx = (keys['ArrowRight'] || keys['d'] || keys['D'] ? 1 : 0)
+                 - (keys['ArrowLeft']  || keys['a'] || keys['A'] ? 1 : 0);
+        const fy = (keys['ArrowDown']  || keys['s'] || keys['S'] ? 1 : 0)
+                 - (keys['ArrowUp']    || keys['w'] || keys['W'] ? 1 : 0);
+        const fd = Math.hypot(fx, fy) || 1;
+        if (fx || fy) player.facing = { x: fx / fd, y: fy / fd };
+        const sp = player.speed * (player.speedBoost > now ? 2 : 1);
+        const nx = Math.max(player.r, Math.min(MAP - player.r, player.x + (fx / fd) * sp * (fx || fy ? 1 : 0)));
+        const ny = Math.max(player.r, Math.min(MAP - player.r, player.y + (fy / fd) * sp * (fx || fy ? 1 : 0)));
+        if (free(nx, player.y, player.r)) player.x = nx;
+        if (free(player.x, ny, player.r)) player.y = ny;
 
-        eggs.forEach(egg => {
-          if (!egg.collected && Math.hypot(player.x - egg.x, player.y - egg.y) < player.r + egg.r)
-            egg.collected = true;
+        // Fire blasts — move, check obstacle hit, expire at map edge
+        blasts = blasts.filter(b => {
+          b.x += b.dx * b.spd; b.y += b.dy * b.spd;
+          const hit = obstacles.find(o => !o.destroyed && !o.temp &&
+                                         Math.hypot(b.x - o.x, b.y - o.y) < b.r + o.r);
+          if (hit) { hit.destroyed = true; return false; }
+          return b.x >= 0 && b.x <= MAP && b.y >= 0 && b.y <= MAP;
         });
-        if (eggs.every(e => e.collected)) state = 'win';
+
+        // Expire temporary obstacles (ice walls)
+        obstacles = obstacles.filter(o => !o.expires || o.expires > now);
+
+        wyrms.forEach(w => updateWyrm(w, now));
+
+        // Collect zone eggs
+        eggs.forEach(e => {
+          if (!e.collected && Math.hypot(player.x - e.x, player.y - e.y) < player.r + e.r)
+            e.collected = true;
+        });
+
+        // Spawn golden egg once all 4 zone eggs collected
+        if (!goldenEgg && eggs.every(e => e.collected))
+          goldenEgg = { x: 120 + Math.random() * (MAP - 240), y: 120 + Math.random() * (MAP - 240),
+                        r: 15, collected: false };
+
+        // Collect golden egg → win
+        if (goldenEgg && !goldenEgg.collected &&
+            Math.hypot(player.x - goldenEgg.x, player.y - goldenEgg.y) < player.r + goldenEgg.r)
+          { goldenEgg.collected = true; state = 'win'; }
+
+        // Wyrm touches player → game over (frozen wyrms don't count)
+        if (state === 'playing' &&
+            wyrms.some(w => w.frozen <= now && Math.hypot(player.x - w.x, player.y - w.y) < player.r + w.r))
+          state = 'gameover';
       }
       drawGame();
       animId = requestAnimationFrame(loop);
     }
 
-    // Play Again via canvas click
+    // Play Again button hit-test
     canvas.addEventListener('click', e => {
       if (state !== 'win' && state !== 'gameover') return;
       const r = canvas.getBoundingClientRect();
-      const cx = (e.clientX - r.left) * (W / r.width);
-      const cy = (e.clientY - r.top)  * (H / r.height);
-      if (cx > W/2-78 && cx < W/2+78 && cy > H/2+36 && cy < H/2+82)
+      const cx = (e.clientX - r.left) * (W / r.width), cy = (e.clientY - r.top) * (H / r.height);
+      if (cx > W/2 - 80 && cx < W/2 + 80 && cy > H/2 + 36 && cy < H/2 + 82)
         initGame(player.color, currentName);
     });
 
-    document.querySelectorAll('.btn-play').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        const color = btn.dataset.color;
-        const name = btn.closest('.card').querySelector('h3').textContent;
-        initGame(color, name);
-        sel.style.display = 'none';
-        gameDiv.style.display = 'flex';
-        canvas.focus();
-        if (animId) cancelAnimationFrame(animId);
-        loop();
-      });
-    });
+    document.querySelectorAll('.btn-play').forEach(btn => btn.addEventListener('click', e => {
+      e.stopPropagation();
+      initGame(btn.dataset.color, btn.closest('.card').querySelector('h3').textContent);
+      sel.style.display = 'none'; gameDiv.style.display = 'flex';
+      canvas.focus();
+      if (animId) cancelAnimationFrame(animId);
+      loop();
+    }));
 
     document.getElementById('back-btn').addEventListener('click', () => {
       if (animId) { cancelAnimationFrame(animId); animId = null; }
-      gameDiv.style.display = 'none';
-      sel.style.display = 'block';
+      gameDiv.style.display = 'none'; sel.style.display = 'block';
     });
 
     document.addEventListener('keydown', e => {
       keys[e.key] = true;
-      if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+      if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
+      if (e.key === ' ' && state === 'playing') useAbility();
     });
     document.addEventListener('keyup', e => { keys[e.key] = false; });
   </script>
