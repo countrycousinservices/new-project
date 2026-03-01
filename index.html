@@ -1,428 +1,376 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dragon's World</title>
-  <style>
-    body { margin: 0; background: #0d0a1a; font-family: 'Segoe UI', sans-serif; text-align: center; color: #fff; }
-    h1 { font-size: 4em; margin: 0.4em 0 0.1em;
-      background: linear-gradient(90deg, red, orange, yellow, green, #00cfff, violet);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    h2 { font-size: 1.4em; color: #ccc; margin-bottom: 1.5em; letter-spacing: 2px; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
-      max-width: 860px; margin: 0 auto 3em; padding: 0 20px; }
-    .card { border-radius: 16px; padding: 24px 16px;
-      transition: transform 0.2s, box-shadow 0.2s; border: 2px solid rgba(255,255,255,0.15); }
-    .card:hover { transform: translateY(-6px) scale(1.03); box-shadow: 0 12px 32px rgba(0,0,0,0.5); }
-    .icon { font-size: 3em; margin-bottom: 10px; }
-    .card h3 { margin: 0 0 6px; font-size: 1.3em; }
-    .element { font-size: 0.85em; font-weight: bold; text-transform: uppercase;
-      letter-spacing: 1px; opacity: 0.85; margin-bottom: 8px; }
-    .ability { font-size: 0.82em; color: #eee; line-height: 1.4; }
-    .btn-play { margin-top: 14px; padding: 8px 24px; border: none; border-radius: 20px;
-      background: rgba(255,255,255,0.2); color: #fff; font-size: 0.9em; font-weight: bold;
-      cursor: pointer; letter-spacing: 1px; transition: background 0.2s; }
-    .btn-play:hover { background: rgba(255,255,255,0.4); }
-    .emberclaw  { background: linear-gradient(145deg, #3a0000, #8b1a00); }
-    .frostfang  { background: linear-gradient(145deg, #00204a, #1a6ea8); }
-    .tidesong   { background: linear-gradient(145deg, #002a2a, #0a6b6b); }
-    .verdenwing { background: linear-gradient(145deg, #0a2200, #235e00); }
-    .stormtalon { background: linear-gradient(145deg, #2a2200, #7a6000); }
-    .shadowmend { background: linear-gradient(145deg, #1a002a, #4b0080); }
-    @media (max-width: 600px) { .grid { grid-template-columns: repeat(2, 1fr); } h1 { font-size: 2.6em; } }
-    #game { display: none; flex-direction: column; align-items: center; padding: 20px 0; }
-    #game-title { font-size: 1.3em; color: #ccc; margin-bottom: 10px; }
-    #canvas { border: 2px solid #444; border-radius: 8px; display: block; max-width: 100%; cursor: default; }
-    #back-btn { margin-top: 14px; padding: 8px 22px; border: none; border-radius: 20px;
-      background: rgba(255,255,255,0.15); color: #fff; font-size: 0.9em; cursor: pointer; }
-    #back-btn:hover { background: rgba(255,255,255,0.3); }
-  </style>
-</head>
-<body>
-  <div id="selection">
-    <h1>Dragon's World</h1>
-    <h2>Choose Your Dragon</h2>
-    <div class="grid">
-      <div class="card emberclaw">
-        <div class="icon">🔥</div>
-        <h3>Emberclaw</h3>
-        <div class="element" style="color:#ff6a00;">Fire</div>
-        <div class="ability">Breathes a blazing inferno that melts anything in its path!</div>
-        <button class="btn-play" data-color="#ff4400">▶ Play</button>
-      </div>
-      <div class="card frostfang">
-        <div class="icon">❄️</div>
-        <h3>Frostfang</h3>
-        <div class="element" style="color:#7dd6ff;">Ice</div>
-        <div class="ability">Freezes enemies solid with one mighty icy roar!</div>
-        <button class="btn-play" data-color="#7dd6ff">▶ Play</button>
-      </div>
-      <div class="card tidesong">
-        <div class="icon">🌊</div>
-        <h3>Tidesong</h3>
-        <div class="element" style="color:#00e5c8;">Ocean</div>
-        <div class="ability">Summons massive waves with a melodic battle cry!</div>
-        <button class="btn-play" data-color="#00e5c8">▶ Play</button>
-      </div>
-      <div class="card verdenwing">
-        <div class="icon">🌿</div>
-        <h3>Verdenwing</h3>
-        <div class="element" style="color:#5ddb3a;">Forest</div>
-        <div class="ability">Grows enchanted vines to trap foes and heal allies!</div>
-        <button class="btn-play" data-color="#5ddb3a">▶ Play</button>
-      </div>
-      <div class="card stormtalon">
-        <div class="icon">⚡</div>
-        <h3>Stormtalon</h3>
-        <div class="element" style="color:#ffe033;">Sky</div>
-        <div class="ability">Calls down lightning bolts from thundering storm clouds!</div>
-        <button class="btn-play" data-color="#ffe033">▶ Play</button>
-      </div>
-      <div class="card shadowmend">
-        <div class="icon">🌑</div>
-        <h3>Shadowmend</h3>
-        <div class="element" style="color:#c87aff;">Dark</div>
-        <div class="ability">Vanishes into darkness and strikes from the shadows!</div>
-        <button class="btn-play" data-color="#c87aff">▶ Play</button>
-      </div>
-    </div>
-  </div>
+<head><meta charset="UTF-8"><title>Dragon's World</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d0a1a;color:#fff;font-family:'Segoe UI',Arial,sans-serif;overflow:hidden}
+#sel{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+#sel h1{font-size:3em;background:linear-gradient(90deg,#ff4400,#ffcc00,#00bbaa,#8844cc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
+#sel p{color:#aaa;margin-bottom:28px;text-align:center;font-size:.95em}
+#grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:740px}
+.card{border:2px solid;border-radius:14px;padding:20px 16px;text-align:center;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.card:hover{transform:translateY(-5px) scale(1.04);box-shadow:0 14px 36px rgba(0,0,0,.6)}
+.card .em{font-size:2.8em}.card h3{margin:8px 0 4px;font-size:1.2em}
+.card .el{font-size:.78em;font-weight:bold;letter-spacing:1px;text-transform:uppercase;opacity:.75;margin-bottom:6px}
+.card .ab{font-size:.76em;color:#ddd;min-height:32px;margin-bottom:14px;line-height:1.4}
+.card button{padding:7px 20px;border:none;border-radius:16px;cursor:pointer;font-weight:bold;color:#fff;font-size:.88em}
+#game{display:none;position:relative}canvas{display:block}
+#hud{position:fixed;top:10px;left:10px;background:rgba(0,0,0,.78);padding:10px 16px;border-radius:10px;font-size:14px;line-height:1.8;pointer-events:none;z-index:5}
+#cdbar{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.78);padding:8px 24px;border-radius:20px;font-size:13px;pointer-events:none;z-index:5;white-space:nowrap}
+#ov{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;flex-direction:column;gap:20px;z-index:20}
+#ov h2{font-size:3em;color:#ffd700}#ov p{font-size:1.1em;color:#ccc;text-align:center}
+#ov button{padding:14px 40px;font-size:1.05em;background:#ffd700;border:none;border-radius:10px;cursor:pointer;font-weight:bold;color:#111}
+@media(max-width:600px){#grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head><body>
+<div id="sel">
+  <h1>🐉 Dragon's World</h1>
+  <p>Choose your dragon. Collect all 4 zone eggs, then find the Golden Egg to win!<br>Move: WASD / Arrow Keys &nbsp;·&nbsp; Ability: SPACE (10s cooldown)</p>
+  <div id="grid"></div>
+</div>
+<div id="game"><canvas id="c"></canvas><div id="hud"></div><div id="cdbar"></div></div>
+<div id="ov"><h2 id="oT"></h2><p id="oM"></p><button onclick="location.reload()">Play Again</button></div>
 
-  <div id="game">
-    <div id="game-title"></div>
-    <canvas id="canvas" width="800" height="500"></canvas>
-    <button id="back-btn">← Back to Selection</button>
-  </div>
+<script>
+const DR=[
+  {n:'Emberclaw', el:'Fire',   c:'#ff4400',bg:'#220800',em:'🔥',ab:'Fire blast that destroys obstacles'},
+  {n:'Frostfang', el:'Ice',    c:'#4499ff',bg:'#001020',em:'❄️',ab:'Ice wall behind you blocks enemies 3s'},
+  {n:'Tidesong',  el:'Ocean',  c:'#00bbaa',bg:'#001a18',em:'🌊',ab:'2× speed boost for 3 seconds'},
+  {n:'Verdenwing',el:'Forest', c:'#44bb44',bg:'#001200',em:'🌿',ab:'Invisible to enemies for 4 seconds'},
+  {n:'Stormtalon',el:'Sky',    c:'#ffcc00',bg:'#181800',em:'⚡',ab:'Instant forward dash 230px'},
+  {n:'Shadowmend',el:'Dark',   c:'#aa44cc',bg:'#110020',em:'🌑',ab:'Freeze all enemies for 5 seconds'},
+];
+// Zone definitions: each 1000x1000 quadrant
+const ZN=[
+  {n:'Volcanic Wastes', x:0,    y:0,    bg:'#1a0300',ac:'#ff4400',ec:'#ff3300',ow:54,oh:26,ename:'Magmawyrm'},
+  {n:'Glacial Peaks',   x:1000, y:0,    bg:'#000d1e',ac:'#88ccff',ec:'#66aaee',ow:14,oh:74,ename:'Frostwyrm'},
+  {n:'Sunken Reef',     x:0,    y:1000, bg:'#001212',ac:'#00bbaa',ec:'#00cc99',ow:30,oh:30,ename:'Tidewyrm'},
+  {n:'Ancient Canopy',  x:1000, y:1000, bg:'#001300',ac:'#44aa44',ec:'#339933',ow:22,oh:54,ename:'Thornwyrm'},
+];
+const OBC=['#bb2200','#77aacc','#006655','#1e3e1e'];
+const ESP=[210,78,145,125], ESZ=[20,46,20,20];
 
-  <script>
-    const sel = document.getElementById('selection'), gameDiv = document.getElementById('game');
-    const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height, MAP = 2000, CD = 10000;
+// Build select cards
+const gEl=document.getElementById('grid');
+DR.forEach((d,i)=>{
+  const el=document.createElement('div');
+  el.className='card';el.style.borderColor=d.c;el.style.background=d.bg;
+  el.innerHTML=`<div class="em">${d.em}</div><h3 style="color:${d.c}">${d.n}</h3>`+
+    `<div class="el" style="color:${d.c}">${d.el}</div><div class="ab">${d.ab}</div>`+
+    `<button style="background:${d.c}" onclick="sg(${i})">▶ Play</button>`;
+  gEl.appendChild(el);
+});
 
-    const ZONES = [
-      { label: 'Volcanic Wastes', color: '#5a1000', x: 0,    y: 0,    w: 1000, h: 1000 },
-      { label: 'Glacial Peaks',   color: '#082240', x: 1000, y: 0,    w: 1000, h: 1000 },
-      { label: 'Sunken Reef',     color: '#003020', x: 0,    y: 1000, w: 1000, h: 1000 },
-      { label: 'Ancient Canopy',  color: '#052000', x: 1000, y: 1000, w: 1000, h: 1000 },
-    ];
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+const MAP=2000;
+let P,ENS,OBS,EGS,GE,PTS,IW,PJ,gt,lts,st,di,dead,won,keys={},fx=1,fy=0;
 
-    // [fracX, fracY, radius] within each zone
-    const OBS_POS = [
-      [[.18,.28,28],[.68,.18,22],[.42,.62,32],[.78,.52,18],[.12,.75,26],[.52,.38,20]],
-      [[.22,.22,22],[.60,.16,26],[.38,.64,20],[.74,.50,24],[.48,.78,22],[.14,.50,18]],
-      [[.28,.24,20],[.64,.34,18],[.20,.64,24],[.70,.68,26],[.45,.46,16],[.84,.18,22]],
-      [[.18,.38,30],[.60,.22,24],[.40,.74,20],[.74,.56,28],[.10,.18,18],[.54,.84,22]],
-    ];
-    const OBS_FILL = ['#7a1a00','#1a3a55','#004433','#0e3a00'];
-    const OBS_GLOW = ['#ff5500','#77bbff','#00cc88','#44cc00'];
+// Utility
+const hyp=(ax,ay,bx,by)=>Math.hypot(ax-bx,ay-by);
+const hits=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+const rnd=(lo,hi)=>lo+Math.random()*(hi-lo);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
-    const ABILITY_LABEL = {
-      Emberclaw:'Fire Blast', Frostfang:'Ice Wall', Tidesong:'Speed Boost',
-      Verdenwing:'Invisibility', Stormtalon:'Dash', Shadowmend:'Freeze All'
-    };
+function sg(idx){
+  di=idx;
+  document.getElementById('sel').style.display='none';
+  document.getElementById('game').style.display='block';
+  cv.width=innerWidth; cv.height=innerHeight;
+  reset(); requestAnimationFrame(tick);
+}
 
-    let state, player, wyrms, obstacles, eggs, goldenEgg, blasts, cam, startTime, elapsed, animId;
-    let keys = {}, currentName = '';
-
-    function makeObs() {
-      const obs = [];
-      ZONES.forEach((z, zi) => OBS_POS[zi].forEach(([fx, fy, r]) =>
-        obs.push({ x: z.x + z.w * fx, y: z.y + z.h * fy, r, destroyed: false,
-                   fill: OBS_FILL[zi], glow: OBS_GLOW[zi] })
-      ));
-      return obs;
+function reset(){
+  dead=won=false; gt=0; st=0; lts=null;
+  P={x:488,y:488,w:28,h:28,cd:0,spT:0,ivT:0};
+  ENS=[]; OBS=[]; EGS=[]; IW=[]; PJ=[]; PTS=[]; GE=null;
+  ZN.forEach((z,zi)=>{
+    // Obstacles — avoid player start area
+    for(let i=0;i<12;i++){
+      let ox,oy;
+      do{ ox=rnd(z.x+40,z.x+960); oy=rnd(z.y+40,z.y+960); }
+      while(hyp(ox,oy,502,502)<260);
+      OBS.push({x:ox,y:oy,w:z.ow,h:z.oh,c:OBC[zi]});
     }
+    // Zone egg
+    EGS.push({x:rnd(z.x+200,z.x+800),y:rnd(z.y+200,z.y+800),r:12,done:false,t:0});
+    // Initial enemies (2 per zone)
+    se(zi); se(zi);
+  });
+}
 
-    function makeWyrms() {
-      const t = Date.now() + 4000; // first Thornwyrm teleport delay
-      return [
-        { x:150,  y:150,  r:16, bR:16, speed:2.0,  bS:2.0,  fill:'#aa1100', glow:'#ff4400', zone:0, frozen:0, gt:0 },
-        { x:1850, y:150,  r:26, bR:26, speed:0.65, bS:0.65, fill:'#cce8ff', glow:'#99ccff', zone:1, frozen:0, gt:0 },
-        { x:150,  y:1850, r:16, bR:16, speed:1.3,  bS:1.3,  fill:'#00aa88', glow:'#00ffcc', zone:2, frozen:0, gt:0, wave:0 },
-        { x:1850, y:1850, r:16, bR:16, speed:1.4,  bS:1.4,  fill:'#1a5500', glow:'#44cc00', zone:3, frozen:0, gt:0, tCD:t },
-      ];
+function se(zi){
+  const z=ZN[zi], sm=1+st*.2;
+  ENS.push({
+    x:rnd(z.x+80,z.x+920), y:rnd(z.y+80,z.y+920),
+    w:ESZ[zi]*sm, h:ESZ[zi]*sm, spd:ESP[zi]*sm,
+    c:z.ec, zi, ft:0, wt:rnd(0,6.28), tcd:rnd(0,2)
+  });
+}
+
+// Move rect obj by dx,dy, colliding with bl array (tile-sliding)
+function mv(o,dx,dy,bl){
+  bl=bl||OBS;
+  let nx=clamp(o.x+dx,0,MAP-o.w);
+  if(!bl.some(b=>hits({x:nx,y:o.y,w:o.w,h:o.h},b))) o.x=nx;
+  let ny=clamp(o.y+dy,0,MAP-o.h);
+  if(!bl.some(b=>hits({x:o.x,y:ny,w:o.w,h:o.h},b))) o.y=ny;
+}
+
+// Enemy move clamped to zone bounds
+function mvE(e,dx,dy){
+  const z=ZN[e.zi], bl=OBS.concat(IW);
+  let nx=clamp(e.x+dx,z.x,z.x+1000-e.w);
+  if(!bl.some(b=>hits({x:nx,y:e.y,w:e.w,h:e.h},b))) e.x=nx;
+  let ny=clamp(e.y+dy,z.y,z.y+1000-e.h);
+  if(!bl.some(b=>hits({x:e.x,y:ny,w:e.w,h:e.h},b))) e.y=ny;
+}
+
+function abl(){
+  if(P.cd>0) return;
+  P.cd=10;
+  if(di===0){
+    // Emberclaw: fire blast in facing direction
+    PJ.push({x:P.x+14,y:P.y+14,vx:fx*430,vy:fy*430,r:10,life:1.8});
+  } else if(di===1){
+    // Frostfang: ice wall perpendicular to movement, behind player
+    const px=P.x-fx*58-10, py=P.y-fy*58-10;
+    IW.push(Math.abs(fx)>Math.abs(fy)
+      ?{x:px,   y:py-58, w:20, h:136,life:3}
+      :{x:px-58,y:py,    w:136,h:20, life:3});
+  } else if(di===2){ P.spT=3;
+  } else if(di===3){ P.ivT=4;
+  } else if(di===4){
+    // Stormtalon: dash 230px in facing direction
+    P.x=clamp(P.x+fx*230,0,MAP-28);
+    P.y=clamp(P.y+fy*230,0,MAP-28);
+  } else {
+    // Shadowmend: freeze all enemies 5s
+    ENS.forEach(e=>e.ft=5);
+  }
+}
+
+function tick(ts){
+  if(dead||won) return;
+  const dt=Math.min((ts-(lts||ts))/1000,.05); lts=ts; gt+=dt;
+
+  // Every 30s: scale all enemies +20%, spawn one new per zone
+  if(Math.floor(gt/30)>st){
+    st++;
+    ENS.forEach(e=>{e.w*=1.2; e.h*=1.2; e.spd*=1.2;});
+    ZN.forEach((_,zi)=>se(zi));
+  }
+
+  // Player input
+  let dx=0, dy=0;
+  if(keys.ArrowLeft ||keys.a||keys.A) dx--;
+  if(keys.ArrowRight||keys.d||keys.D) dx++;
+  if(keys.ArrowUp   ||keys.w||keys.W) dy--;
+  if(keys.ArrowDown ||keys.s||keys.S) dy++;
+  if(dx||dy){
+    const m=hyp(0,0,dx,dy); fx=dx/m; fy=dy/m;
+    mv(P, fx*180*(P.spT>0?2:1)*dt, fy*180*(P.spT>0?2:1)*dt);
+  }
+  if(P.cd>0)  P.cd-=dt;
+  if(P.spT>0) P.spT-=dt;
+  if(P.ivT>0) P.ivT-=dt;
+
+  // Ice wall timers
+  IW=IW.filter(w=>{w.life-=dt;return w.life>0;});
+
+  // Fire projectiles — destroy obstacles on hit
+  PJ=PJ.filter(p=>{
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt;
+    if(p.life<=0||p.x<0||p.x>MAP||p.y<0||p.y>MAP) return false;
+    const i=OBS.findIndex(o=>hyp(p.x,p.y,o.x+o.w/2,o.y+o.h/2)<p.r+Math.max(o.w,o.h)/2);
+    if(i>=0){
+      const o=OBS[i];
+      for(let j=0;j<8;j++) PTS.push({x:o.x+o.w/2,y:o.y+o.h/2,vx:rnd(-240,240),vy:rnd(-240,240),life:.7,c:'#ff6600'});
+      OBS.splice(i,1); return false;
     }
+    return true;
+  });
 
-    function initGame(color, name) {
-      state = 'playing'; currentName = name;
-      player = { x:MAP/2, y:MAP/2, r:12, color, speed:3.5, name,
-                 abCD:0, speedBoost:0, invis:0, facing:{x:1,y:0} };
-      wyrms = makeWyrms(); obstacles = makeObs(); blasts = [];
-      eggs = ZONES.map((z, zi) => ({
-        x: z.x + 100 + Math.random() * (z.w - 200),
-        y: z.y + 100 + Math.random() * (z.h - 200),
-        r: 10, collected: false, zone: zi
-      }));
-      goldenEgg = null; cam = { x:0, y:0 }; startTime = Date.now(); elapsed = 0;
-      document.getElementById('game-title').textContent =
-        `${name} — SPACE: ${ABILITY_LABEL[name]} (10s CD) | Collect 4 zone eggs, then the Golden Egg!`;
-    }
-
-    function circ(x, y, r, fill, stroke, lw) {
-      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fillStyle = fill; ctx.fill();
-      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 2; ctx.stroke(); }
-    }
-
-    // Returns true if (x,y) with radius r doesn't overlap any active obstacle
-    function free(x, y, r) {
-      for (const o of obstacles) if (!o.destroyed && Math.hypot(x - o.x, y - o.y) < r + o.r) return false;
-      return true;
-    }
-
-    function useAbility() {
-      const now = Date.now();
-      if (now < player.abCD) return;
-      player.abCD = now + CD;
-      const { x: fx, y: fy } = player.facing;
-      switch (player.name) {
-        case 'Emberclaw':
-          blasts.push({ x: player.x, y: player.y, dx: fx, dy: fy, r: 7, spd: 11 }); break;
-        case 'Frostfang':
-          obstacles.push({ x: player.x - fx * 44, y: player.y - fy * 44, r: 26, destroyed: false,
-                           expires: now + 3000, fill: '#aadeff', glow: '#ffffff', temp: true }); break;
-        case 'Tidesong':  player.speedBoost = now + 3000; break;
-        case 'Verdenwing': player.invis = now + 4000; break;
-        case 'Stormtalon': {
-          const nx = Math.max(player.r, Math.min(MAP - player.r, player.x + fx * 230));
-          const ny = Math.max(player.r, Math.min(MAP - player.r, player.y + fy * 230));
-          if (free(nx, ny, player.r)) { player.x = nx; player.y = ny; } break;
-        }
-        case 'Shadowmend': wyrms.forEach(w => w.frozen = now + 5000); break;
+  // Enemies
+  ENS.forEach(e=>{
+    if(e.ft>0){e.ft-=dt;return;}
+    if(P.ivT>0) return; // invisible — can't be targeted
+    const px=P.x+14, py=P.y+14;
+    const ang=Math.atan2(py-(e.y+e.h/2), px-(e.x+e.w/2));
+    if(e.zi===0){
+      // Magmawyrm: fast direct chaser
+      mvE(e,Math.cos(ang)*e.spd*dt, Math.sin(ang)*e.spd*dt);
+    } else if(e.zi===1){
+      // Frostwyrm: slow but huge
+      mvE(e,Math.cos(ang)*e.spd*dt, Math.sin(ang)*e.spd*dt);
+    } else if(e.zi===2){
+      // Tidewyrm: sinusoidal wave movement
+      e.wt+=dt*2;
+      const wa=ang+Math.sin(e.wt)*1.6;
+      mvE(e,Math.cos(wa)*e.spd*dt, Math.sin(wa)*e.spd*dt);
+    } else {
+      // Thornwyrm: teleports short distances toward player
+      e.tcd-=dt;
+      if(e.tcd<=0){
+        e.tcd=1.5+rnd(0,1.5);
+        const td=80+rnd(0,90), z=ZN[3];
+        e.x=clamp(e.x+Math.cos(ang)*td, z.x, z.x+1000-e.w);
+        e.y=clamp(e.y+Math.sin(ang)*td, z.y, z.y+1000-e.h);
       }
     }
+    if(hits(e,P)) endG(false);
+  });
 
-    function updateWyrm(w, now) {
-      if (w.frozen > now) return;
-      const z = ZONES[w.zone];
-      // If player is invisible, wyrm wanders toward zone centre instead
-      const tx = player.invis > now ? z.x + z.w / 2 : player.x;
-      const ty = player.invis > now ? z.y + z.h / 2 : player.y;
-      let dx = tx - w.x, dy = ty - w.y, d = Math.hypot(dx, dy) || 1;
-      let mx = 0, my = 0;
-
-      if (w.wave !== undefined) {           // Tidewyrm — sinusoidal weave
-        w.wave += 0.05;
-        const a = Math.atan2(dy, dx), px = Math.cos(a + 1.5708), py = Math.sin(a + 1.5708);
-        mx = (dx / d) * w.speed + px * Math.sin(w.wave) * 2.5;
-        my = (dy / d) * w.speed + py * Math.sin(w.wave) * 2.5;
-      } else if (w.tCD !== undefined) {     // Thornwyrm — teleport bursts
-        if (now > w.tCD && d > 180) {
-          w.tCD = now + 3000;
-          const leap = 120 + Math.random() * 110;
-          w.x = Math.max(z.x + w.r, Math.min(z.x + z.w - w.r, w.x + (dx / d) * leap));
-          w.y = Math.max(z.y + w.r, Math.min(z.y + z.h - w.r, w.y + (dy / d) * leap));
-        }
-        mx = (dx / d) * w.speed; my = (dy / d) * w.speed;
-      } else {
-        mx = (dx / d) * w.speed; my = (dy / d) * w.speed;
-      }
-
-      w.x += mx; w.y += my;
-
-      // Push wyrm away from temporary ice-wall obstacles
-      for (const o of obstacles) {
-        if (!o.destroyed && o.temp) {
-          const od = Math.hypot(w.x - o.x, w.y - o.y) || 1;
-          if (od < w.r + o.r) {
-            const push = (w.r + o.r - od + 1) / od;
-            w.x += (w.x - o.x) * push; w.y += (w.y - o.y) * push;
-          }
-        }
-      }
-
-      // Clamp to zone
-      w.x = Math.max(z.x + w.r, Math.min(z.x + z.w - w.r, w.x));
-      w.y = Math.max(z.y + w.r, Math.min(z.y + z.h - w.r, w.y));
-
-      // 20% growth every 30 s
-      const gs = Math.floor(elapsed / 30);
-      if (gs > w.gt) { w.gt = gs; w.r = w.bR * (1 + gs * 0.2); w.speed = w.bS * (1 + gs * 0.2); }
+  // Zone eggs
+  EGS.forEach(e=>{
+    if(e.done) return;
+    e.t+=dt*3;
+    if(hits({x:e.x-e.r,y:e.y-e.r,w:e.r*2,h:e.r*2},P)){
+      e.done=true;
+      for(let j=0;j<12;j++) PTS.push({x:e.x,y:e.y,vx:rnd(-320,320),vy:rnd(-320,320),life:.9,c:'#ffff00'});
     }
+  });
 
-    function drawGame() {
-      const now = Date.now(), t = now / 400;
-      cam.x = Math.max(0, Math.min(MAP - W, player.x - W / 2));
-      cam.y = Math.max(0, Math.min(MAP - H, player.y - H / 2));
-      ctx.save(); ctx.translate(-cam.x, -cam.y);
+  // Spawn golden egg once all 4 zone eggs collected
+  if(!GE && EGS.every(e=>e.done))
+    GE={x:rnd(250,1750),y:rnd(250,1750),r:16,t:0};
 
-      // Zone backgrounds + labels
-      ZONES.forEach(z => {
-        ctx.fillStyle = z.color; ctx.fillRect(z.x, z.y, z.w, z.h);
-        ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.font = 'bold 38px Segoe UI';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(z.label, z.x + z.w / 2, z.y + z.h / 2);
-      });
+  // Collect golden egg → win
+  if(GE){
+    GE.t+=dt*4;
+    if(hits({x:GE.x-GE.r,y:GE.y-GE.r,w:GE.r*2,h:GE.r*2},P)) endG(true);
+  }
 
-      // Grid
-      ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
-      for (let i = 0; i <= MAP; i += 100) {
-        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, MAP); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(MAP, i); ctx.stroke();
-      }
+  // Particles
+  PTS=PTS.filter(p=>{p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt; return p.life>0;});
 
-      // Obstacles
-      obstacles.forEach(o => {
-        if (o.destroyed) return;
-        ctx.save(); ctx.shadowColor = o.glow; ctx.shadowBlur = o.temp ? 20 : 10;
-        circ(o.x, o.y, o.r, o.fill, o.glow, 2); ctx.restore();
-      });
+  draw();
+  requestAnimationFrame(tick);
+}
 
-      // Zone eggs
-      eggs.forEach(egg => {
-        if (egg.collected) return;
-        ctx.save(); ctx.shadowColor = '#ffe066'; ctx.shadowBlur = 14 + Math.sin(t) * 7;
-        circ(egg.x, egg.y, egg.r, '#fffab0', '#ffe066', 2); ctx.restore();
-      });
+function endG(w){
+  won=w; dead=!w;
+  document.getElementById('oT').textContent=w?'You Win! 🏆':'Game Over 💀';
+  document.getElementById('oM').textContent=w
+    ?`All eggs collected in ${Math.floor(gt/60)}:${(gt%60|0).toString().padStart(2,'0')}!`
+    :'A dragon enemy caught you!';
+  document.getElementById('ov').style.display='flex';
+}
 
-      // Golden egg
-      if (goldenEgg && !goldenEgg.collected) {
-        ctx.save(); ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 24 + Math.sin(t * 1.5) * 10;
-        circ(goldenEgg.x, goldenEgg.y, 15, '#ffd700', '#ffffff', 3); ctx.restore();
-      }
+function draw(){
+  const W=cv.width, H=cv.height;
+  // Camera: center on player, clamped to map
+  const camx=clamp(P.x+14-W/2, 0, MAP-W);
+  const camy=clamp(P.y+14-H/2, 0, MAP-H);
+  ctx.clearRect(0,0,W,H);
+  ctx.save(); ctx.translate(-camx,-camy);
 
-      // Fire blasts
-      blasts.forEach(b => {
-        ctx.save(); ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 16;
-        circ(b.x, b.y, b.r, '#ff8800', '#ffcc00', 2); ctx.restore();
-      });
+  // Zone backgrounds
+  ZN.forEach(z=>{
+    ctx.fillStyle=z.bg; ctx.fillRect(z.x,z.y,1000,1000);
+    ctx.strokeStyle=z.ac+'40'; ctx.lineWidth=4; ctx.strokeRect(z.x,z.y,1000,1000);
+    ctx.fillStyle=z.ac+'50'; ctx.font='bold 14px Segoe UI';
+    ctx.textAlign='left'; ctx.textBaseline='top'; ctx.fillText(z.n,z.x+14,z.y+14);
+  });
 
-      // Wyrms
-      wyrms.forEach(w => {
-        ctx.save(); ctx.shadowColor = w.glow; ctx.shadowBlur = 22;
-        if (w.frozen > now) ctx.globalAlpha = 0.4;
-        circ(w.x, w.y, w.r, w.fill, w.glow, 3); ctx.restore();
-      });
+  // Subtle grid
+  ctx.strokeStyle='rgba(255,255,255,0.03)'; ctx.lineWidth=1;
+  for(let i=0;i<=MAP;i+=200){
+    ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,MAP);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(MAP,i);ctx.stroke();
+  }
 
-      // Player (semi-transparent when invisible)
-      ctx.save();
-      if (player.invis > now) ctx.globalAlpha = 0.28;
-      ctx.shadowColor = player.color; ctx.shadowBlur = 20;
-      circ(player.x, player.y, player.r, player.color, '#fff', 2); ctx.restore();
+  // Obstacles
+  OBS.forEach(o=>{
+    ctx.fillStyle=o.c; ctx.fillRect(o.x,o.y,o.w,o.h);
+    ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=1; ctx.strokeRect(o.x,o.y,o.w,o.h);
+  });
 
-      ctx.restore(); // end camera
+  // Ice walls
+  IW.forEach(w=>{
+    ctx.fillStyle='rgba(153,204,255,0.82)'; ctx.fillRect(w.x,w.y,w.w,w.h);
+    ctx.strokeStyle='#cce8ff'; ctx.lineWidth=2; ctx.strokeRect(w.x,w.y,w.w,w.h);
+  });
 
-      // ── HUD ──
-      const coll = eggs.filter(e => e.collected).length;
-      const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
-      const secs = String(elapsed % 60).padStart(2, '0');
-      ctx.fillStyle = 'rgba(0,0,0,0.68)'; ctx.fillRect(8, 8, 248, 96);
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Segoe UI';
-      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      ctx.fillText(`Time: ${mins}:${secs}`, 18, 14);
-      ctx.fillText(`Zone Eggs: ${coll}/4${goldenEgg ? '  ★ Golden Egg on map!' : ''}`, 18, 34);
-      const cdLeft = Math.max(0, Math.ceil((player.abCD - now) / 1000));
-      ctx.fillStyle = cdLeft ? '#ff9944' : '#88ff55';
-      ctx.fillText(`SPACE: ${ABILITY_LABEL[player.name]}${cdLeft ? ` (${cdLeft}s)` : ' — READY'}`, 18, 54);
-      const fx = [];
-      if (player.speedBoost > now) fx.push(`Boost ${Math.ceil((player.speedBoost - now) / 1000)}s`);
-      if (player.invis > now)      fx.push(`Invis ${Math.ceil((player.invis - now) / 1000)}s`);
-      const maxFrz = Math.max(...wyrms.map(w => w.frozen));
-      if (maxFrz > now) fx.push(`Freeze ${Math.ceil((maxFrz - now) / 1000)}s`);
-      if (fx.length) { ctx.fillStyle = '#88ffff'; ctx.fillText('▶ ' + fx.join(' | '), 18, 74); }
+  // Zone eggs (glowing pulse)
+  EGS.forEach(e=>{
+    if(e.done) return;
+    const glow=Math.sin(e.t)*5+e.r+4;
+    ctx.beginPath(); ctx.arc(e.x,e.y,glow,0,6.28); ctx.fillStyle='rgba(255,255,0,0.12)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,6.28); ctx.fillStyle='#ffffcc'; ctx.fill();
+    ctx.strokeStyle='#ffff00'; ctx.lineWidth=2; ctx.stroke();
+    ctx.font='13px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🥚',e.x,e.y);
+  });
 
-      // ── Game over / win overlay ──
-      if (state !== 'playing') {
-        ctx.fillStyle = 'rgba(0,0,0,0.76)'; ctx.fillRect(0, 0, W, H);
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.font = 'bold 54px Segoe UI';
-        ctx.fillStyle = state === 'win' ? '#ffd700' : '#ff3344';
-        ctx.fillText(state === 'win' ? '🏆 YOU WIN!' : '💀 GAME OVER', W / 2, H / 2 - 58);
-        ctx.font = '20px Segoe UI'; ctx.fillStyle = '#ccc';
-        ctx.fillText(`Time: ${mins}:${secs}  •  Zone Eggs: ${coll}/4`, W / 2, H / 2 + 2);
-        ctx.fillStyle = '#fff'; ctx.fillRect(W / 2 - 80, H / 2 + 36, 160, 46);
-        ctx.fillStyle = '#111'; ctx.font = 'bold 18px Segoe UI';
-        ctx.fillText('Play Again', W / 2, H / 2 + 59);
-      }
-    }
+  // Golden egg
+  if(GE){
+    const glow=Math.sin(GE.t)*10+GE.r+6;
+    ctx.beginPath(); ctx.arc(GE.x,GE.y,glow,0,6.28); ctx.fillStyle='rgba(255,215,0,0.25)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(GE.x,GE.y,GE.r,0,6.28);
+    ctx.fillStyle='#ffd700'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.stroke();
+    ctx.font='22px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🥚',GE.x,GE.y);
+  }
 
-    function loop() {
-      const now = Date.now();
-      if (state === 'playing') {
-        elapsed = Math.floor((now - startTime) / 1000);
+  // Enemies
+  ENS.forEach(e=>{
+    ctx.save();
+    if(e.ft>0) ctx.globalAlpha=.5;
+    ctx.fillStyle=e.ft>0?'#aaddff':e.c;
+    ctx.fillRect(e.x,e.y,e.w,e.h);
+    ctx.font=`${clamp(e.w*.75,10,26)}px serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🐲',e.x+e.w/2,e.y+e.h/2);
+    ctx.restore();
+  });
 
-        // Movement (separated axes for obstacle sliding)
-        const fx = (keys['ArrowRight'] || keys['d'] || keys['D'] ? 1 : 0)
-                 - (keys['ArrowLeft']  || keys['a'] || keys['A'] ? 1 : 0);
-        const fy = (keys['ArrowDown']  || keys['s'] || keys['S'] ? 1 : 0)
-                 - (keys['ArrowUp']    || keys['w'] || keys['W'] ? 1 : 0);
-        const fd = Math.hypot(fx, fy) || 1;
-        if (fx || fy) player.facing = { x: fx / fd, y: fy / fd };
-        const sp = player.speed * (player.speedBoost > now ? 2 : 1);
-        const nx = Math.max(player.r, Math.min(MAP - player.r, player.x + (fx / fd) * sp * (fx || fy ? 1 : 0)));
-        const ny = Math.max(player.r, Math.min(MAP - player.r, player.y + (fy / fd) * sp * (fx || fy ? 1 : 0)));
-        if (free(nx, player.y, player.r)) player.x = nx;
-        if (free(player.x, ny, player.r)) player.y = ny;
+  // Fire projectiles
+  PJ.forEach(p=>{
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.28); ctx.fillStyle='#ff6600'; ctx.fill();
+    ctx.strokeStyle='rgba(255,170,0,0.5)'; ctx.lineWidth=5; ctx.stroke();
+  });
 
-        // Fire blasts — move, check obstacle hit, expire at map edge
-        blasts = blasts.filter(b => {
-          b.x += b.dx * b.spd; b.y += b.dy * b.spd;
-          const hit = obstacles.find(o => !o.destroyed && !o.temp &&
-                                         Math.hypot(b.x - o.x, b.y - o.y) < b.r + o.r);
-          if (hit) { hit.destroyed = true; return false; }
-          return b.x >= 0 && b.x <= MAP && b.y >= 0 && b.y <= MAP;
-        });
+  // Particles
+  ctx.save();
+  PTS.forEach(p=>{
+    ctx.globalAlpha=Math.max(0,p.life);
+    ctx.beginPath(); ctx.arc(p.x,p.y,3,0,6.28); ctx.fillStyle=p.c; ctx.fill();
+  });
+  ctx.restore();
 
-        // Expire temporary obstacles (ice walls)
-        obstacles = obstacles.filter(o => !o.expires || o.expires > now);
+  // Player
+  ctx.save();
+  if(P.ivT>0) ctx.globalAlpha=.3;
+  ctx.font='30px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(DR[di].em, P.x+14, P.y+14);
+  ctx.restore();
 
-        wyrms.forEach(w => updateWyrm(w, now));
+  ctx.restore(); // end camera transform
 
-        // Collect zone eggs
-        eggs.forEach(e => {
-          if (!e.collected && Math.hypot(player.x - e.x, player.y - e.y) < player.r + e.r)
-            e.collected = true;
-        });
+  // HUD
+  const col=EGS.filter(e=>e.done).length;
+  const mins=Math.floor(gt/60), secs=(gt%60|0).toString().padStart(2,'0');
+  document.getElementById('hud').innerHTML=
+    `⏱ ${mins}:${secs} &nbsp;|&nbsp; 🥚 ${col}/4`+
+    (GE?'<br><b style="color:#ffd700">✨ Find the Golden Egg!</b>':'')+
+    (P.ivT>0?`<br><span style="color:#88ff88">👁 Invisible ${P.ivT.toFixed(1)}s</span>`:'')+
+    (P.spT>0?`<br><span style="color:#88ccff">⚡ Speed ${P.spT.toFixed(1)}s</span>`:'');
 
-        // Spawn golden egg once all 4 zone eggs collected
-        if (!goldenEgg && eggs.every(e => e.collected))
-          goldenEgg = { x: 120 + Math.random() * (MAP - 240), y: 120 + Math.random() * (MAP - 240),
-                        r: 15, collected: false };
+  const cd=document.getElementById('cdbar');
+  cd.style.color=P.cd>0?'#888':'#ffd700';
+  cd.textContent=P.cd>0?`[SPACE] Recharging ${P.cd.toFixed(1)}s…`:`[SPACE] ${DR[di].ab}`;
+}
 
-        // Collect golden egg → win
-        if (goldenEgg && !goldenEgg.collected &&
-            Math.hypot(player.x - goldenEgg.x, player.y - goldenEgg.y) < player.r + goldenEgg.r)
-          { goldenEgg.collected = true; state = 'win'; }
-
-        // Wyrm touches player → game over (frozen wyrms don't count)
-        if (state === 'playing' &&
-            wyrms.some(w => w.frozen <= now && Math.hypot(player.x - w.x, player.y - w.y) < player.r + w.r))
-          state = 'gameover';
-      }
-      drawGame();
-      animId = requestAnimationFrame(loop);
-    }
-
-    // Play Again button hit-test
-    canvas.addEventListener('click', e => {
-      if (state !== 'win' && state !== 'gameover') return;
-      const r = canvas.getBoundingClientRect();
-      const cx = (e.clientX - r.left) * (W / r.width), cy = (e.clientY - r.top) * (H / r.height);
-      if (cx > W/2 - 80 && cx < W/2 + 80 && cy > H/2 + 36 && cy < H/2 + 82)
-        initGame(player.color, currentName);
-    });
-
-    document.querySelectorAll('.btn-play').forEach(btn => btn.addEventListener('click', e => {
-      e.stopPropagation();
-      initGame(btn.dataset.color, btn.closest('.card').querySelector('h3').textContent);
-      sel.style.display = 'none'; gameDiv.style.display = 'flex';
-      canvas.focus();
-      if (animId) cancelAnimationFrame(animId);
-      loop();
-    }));
-
-    document.getElementById('back-btn').addEventListener('click', () => {
-      if (animId) { cancelAnimationFrame(animId); animId = null; }
-      gameDiv.style.display = 'none'; sel.style.display = 'block';
-    });
-
-    document.addEventListener('keydown', e => {
-      keys[e.key] = true;
-      if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
-      if (e.key === ' ' && state === 'playing') useAbility();
-    });
-    document.addEventListener('keyup', e => { keys[e.key] = false; });
-  </script>
+document.addEventListener('keydown',e=>{
+  keys[e.key]=true;
+  if(e.key===' '){e.preventDefault(); if(P&&!dead&&!won) abl();}
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+});
+document.addEventListener('keyup',e=>{keys[e.key]=false;});
+window.addEventListener('resize',()=>{
+  if(document.getElementById('game').style.display!=='none'){
+    cv.width=innerWidth; cv.height=innerHeight;
+  }
+});
+</script>
 </body>
 </html>
