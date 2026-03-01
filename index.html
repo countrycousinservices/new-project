@@ -4,98 +4,79 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0d0a1a;color:#fff;font-family:'Segoe UI',Arial,sans-serif;overflow:hidden}
-#sel{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px}
-#sel h1{font-size:3em;background:linear-gradient(90deg,#ff4400,#ffcc00,#00bbaa,#8844cc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
-#sel p{color:#aaa;margin-bottom:28px;text-align:center;font-size:.95em}
-#grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:740px}
-.card{border:2px solid;border-radius:14px;padding:20px 16px;text-align:center;cursor:pointer;transition:transform .15s,box-shadow .15s}
-.card:hover{transform:translateY(-5px) scale(1.04);box-shadow:0 14px 36px rgba(0,0,0,.6)}
-.card .em{font-size:2.8em}.card h3{margin:8px 0 4px;font-size:1.2em}
-.card .el{font-size:.78em;font-weight:bold;letter-spacing:1px;text-transform:uppercase;opacity:.75;margin-bottom:6px}
-.card .ab{font-size:.76em;color:#ddd;min-height:32px;margin-bottom:14px;line-height:1.4}
-.card button{padding:7px 20px;border:none;border-radius:16px;cursor:pointer;font-weight:bold;color:#fff;font-size:.88em}
-#game{display:none;position:relative}canvas{display:block}
+canvas{display:block}
 #hud{position:fixed;top:10px;left:10px;background:rgba(0,0,0,.78);padding:10px 16px;border-radius:10px;font-size:14px;line-height:1.8;pointer-events:none;z-index:5}
 #cdbar{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.78);padding:8px 24px;border-radius:20px;font-size:13px;pointer-events:none;z-index:5;white-space:nowrap}
 #ov{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;flex-direction:column;gap:20px;z-index:20}
-#ov h2{font-size:3em;color:#ffd700}#ov p{font-size:1.1em;color:#ccc;text-align:center}
-#ov button{padding:14px 40px;font-size:1.05em;background:#ffd700;border:none;border-radius:10px;cursor:pointer;font-weight:bold;color:#111}
-@media(max-width:600px){#grid{grid-template-columns:repeat(2,1fr)}}
+#ov h2{font-size:3em}#ov p{font-size:1.1em;color:#ccc;text-align:center;max-width:420px}
+#ov button{padding:14px 40px;font-size:1.05em;border:none;border-radius:10px;cursor:pointer;font-weight:bold}
 </style>
 </head><body>
-<div id="sel">
-  <h1>🐉 Dragon's World</h1>
-  <p>Choose your dragon. Collect all 4 zone eggs, then find the Golden Egg to win!<br>Move: WASD / Arrow Keys &nbsp;·&nbsp; Ability: SPACE (10s cooldown)</p>
-  <div id="grid"></div>
-</div>
-<div id="game"><canvas id="c"></canvas><div id="hud"></div><div id="cdbar"></div></div>
-<div id="ov"><h2 id="oT"></h2><p id="oM"></p><button onclick="location.reload()">Play Again</button></div>
+<canvas id="c"></canvas>
+<div id="hud"></div>
+<div id="cdbar"></div>
+<div id="ov"><h2 id="oT"></h2><p id="oM"></p><button id="oBtn"></button></div>
 
 <script>
-const DR=[
-  {n:'Emberclaw', el:'Fire',   c:'#ff4400',bg:'#220800',em:'🔥',ab:'Fire blast that destroys obstacles'},
-  {n:'Frostfang', el:'Ice',    c:'#4499ff',bg:'#001020',em:'❄️',ab:'Ice wall behind you blocks enemies 3s'},
-  {n:'Tidesong',  el:'Ocean',  c:'#00bbaa',bg:'#001a18',em:'🌊',ab:'2× speed boost for 3 seconds'},
-  {n:'Verdenwing',el:'Forest', c:'#44bb44',bg:'#001200',em:'🌿',ab:'Invisible to enemies for 4 seconds'},
-  {n:'Stormtalon',el:'Sky',    c:'#ffcc00',bg:'#181800',em:'⚡',ab:'Instant forward dash 230px'},
-  {n:'Shadowmend',el:'Dark',   c:'#aa44cc',bg:'#110020',em:'🌑',ab:'Freeze all enemies for 5 seconds'},
+const LV=[
+  {em:'🌑',c:'#aa44cc',n:'Shadowmend',el:'Dark',  ab:'Freeze all enemies for 5s'},
+  {em:'🌿',c:'#44bb44',n:'Verdenwing',el:'Forest',ab:'Invisible to enemies for 4s'},
+  {em:'🌊',c:'#00bbaa',n:'Tidesong',  el:'Ocean', ab:'2× speed for 3s'},
+  {em:'⚡',c:'#ffcc00',n:'Stormtalon',el:'Sky',   ab:'Instant forward dash 300px'},
+  {em:'🔥',c:'#ff4400',n:'Emberclaw', el:'Fire',  ab:'Fire ring — knocks enemies back 50px'},
+  {em:'❄️',c:'#4499ff',n:'Frostfang', el:'Ice',   ab:'Freeze nearby enemies for 2s'},
 ];
-// Zone definitions: each 1000x1000 quadrant
 const ZN=[
-  {n:'Volcanic Wastes', x:0,    y:0,    bg:'#1a0300',ac:'#ff4400',ec:'#ff3300',ow:54,oh:26,ename:'Magmawyrm'},
-  {n:'Glacial Peaks',   x:1000, y:0,    bg:'#000d1e',ac:'#88ccff',ec:'#66aaee',ow:14,oh:74,ename:'Frostwyrm'},
-  {n:'Sunken Reef',     x:0,    y:1000, bg:'#001212',ac:'#00bbaa',ec:'#00cc99',ow:30,oh:30,ename:'Tidewyrm'},
-  {n:'Ancient Canopy',  x:1000, y:1000, bg:'#001300',ac:'#44aa44',ec:'#339933',ow:22,oh:54,ename:'Thornwyrm'},
+  {n:'Volcanic Wastes', x:0,    y:0,    bg:'#1a0300',ac:'#ff4400',ec:'#ff3300',ow:54,oh:26},
+  {n:'Glacial Peaks',   x:1000, y:0,    bg:'#000d1e',ac:'#88ccff',ec:'#66aaee',ow:14,oh:74},
+  {n:'Sunken Reef',     x:0,    y:1000, bg:'#001212',ac:'#00bbaa',ec:'#00cc99',ow:30,oh:30},
+  {n:'Ancient Canopy',  x:1000, y:1000, bg:'#001300',ac:'#44aa44',ec:'#339933',ow:22,oh:54},
 ];
 const OBC=['#bb2200','#77aacc','#006655','#1e3e1e'];
 const ESP=[210,78,145,125], ESZ=[20,46,20,20];
 
-// Build select cards
-const gEl=document.getElementById('grid');
-DR.forEach((d,i)=>{
-  const el=document.createElement('div');
-  el.className='card';el.style.borderColor=d.c;el.style.background=d.bg;
-  el.innerHTML=`<div class="em">${d.em}</div><h3 style="color:${d.c}">${d.n}</h3>`+
-    `<div class="el" style="color:${d.c}">${d.el}</div><div class="ab">${d.ab}</div>`+
-    `<button style="background:${d.c}" onclick="sg(${i})">▶ Play</button>`;
-  gEl.appendChild(el);
-});
-
 const cv=document.getElementById('c'), ctx=cv.getContext('2d');
 const MAP=2000;
-let P,ENS,OBS,EGS,GE,PTS,IW,PJ,gt,lts,st,di,dead,won,keys={},fx=1,fy=0;
+let P,ENS,OBS,EGS,GE,PTS,IW,PJ,RINGS,BLTS,ZS,gt,lts,st,lv,dead,won,keys={},fx=1,fy=0,moved;
 
-// Utility
 const hyp=(ax,ay,bx,by)=>Math.hypot(ax-bx,ay-by);
 const hits=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 const rnd=(lo,hi)=>lo+Math.random()*(hi-lo);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
-function sg(idx){
-  di=idx;
-  document.getElementById('sel').style.display='none';
-  document.getElementById('game').style.display='block';
-  cv.width=innerWidth; cv.height=innerHeight;
-  reset(); requestAnimationFrame(tick);
-}
-
-function reset(){
-  dead=won=false; gt=0; st=0; lts=null;
-  P={x:488,y:488,w:28,h:28,cd:0,spT:0,ivT:0};
-  ENS=[]; OBS=[]; EGS=[]; IW=[]; PJ=[]; PTS=[]; GE=null;
+function startLevel(level){
+  lv=level; dead=won=false; gt=0; st=0; lts=null; moved=false;
+  P={x:986,y:986,w:28,h:28,cd:0,spT:0,ivT:0};
+  ENS=[]; OBS=[]; EGS=[]; IW=[]; PJ=[]; PTS=[]; RINGS=[]; BLTS=[]; GE=null;
+  // Per-zone state: timers and escalating variables
+  ZS=[
+    {t5:5, t10:10, obsT:5},                      // Volcanic: speed/dup/slide timers
+    {shot:5, grow:5, brk:2.5, resp:[]},           // Glacial: shoot/grow/break/respawn queue
+    {t5:5, t10:10, amp:1.6},                      // Sunken Reef: amplitude/multiply timers
+    {t10:10, t5:5, td:80, addT:5, addN:0},        // Canopy: multiply/jump range/obstacle-add timers
+  ];
   ZN.forEach((z,zi)=>{
-    // Obstacles — avoid player start area
     for(let i=0;i<12;i++){
       let ox,oy;
       do{ ox=rnd(z.x+40,z.x+960); oy=rnd(z.y+40,z.y+960); }
-      while(hyp(ox,oy,502,502)<260);
-      OBS.push({x:ox,y:oy,w:z.ow,h:z.oh,c:OBC[zi]});
+      while(hyp(ox,oy,1000,1000)<280);
+      const o={x:ox,y:oy,w:z.ow,h:z.oh,c:OBC[zi],zi};
+      // Sunken Reef obstacles bounce; give them a random velocity
+      if(zi===2){ o.vx=(Math.random()<.5?-1:1)*rnd(55,110); o.vy=(Math.random()<.5?-1:1)*rnd(55,110); }
+      OBS.push(o);
     }
-    // Zone egg
     EGS.push({x:rnd(z.x+200,z.x+800),y:rnd(z.y+200,z.y+800),r:12,done:false,t:0});
-    // Initial enemies (2 per zone)
-    se(zi); se(zi);
   });
+  // Zone-specific initial spawns
+  const vz=ZN[0];
+  // Volcanic: exactly 1 Magmawyrm at HALF speed
+  ENS.push({x:rnd(vz.x+80,vz.x+920),y:rnd(vz.y+80,vz.y+920),w:ESZ[0],h:ESZ[0],spd:ESP[0]*.5,c:vz.ec,zi:0,ft:0,wt:0,tcd:0});
+  se(1);        // Glacial: 1 Frostwyrm
+  se(2); se(2); // Sunken Reef: 2 Tidewyrms
+  se(3); se(3); // Ancient Canopy: 2 Thornwyrms
+  document.getElementById('ov').style.display='none';
+  cv.width=innerWidth; cv.height=innerHeight;
+  requestAnimationFrame(tick);
 }
 
 function se(zi){
@@ -107,16 +88,13 @@ function se(zi){
   });
 }
 
-// Move rect obj by dx,dy, colliding with bl array (tile-sliding)
-function mv(o,dx,dy,bl){
-  bl=bl||OBS;
+function mv(o,dx,dy){
   let nx=clamp(o.x+dx,0,MAP-o.w);
-  if(!bl.some(b=>hits({x:nx,y:o.y,w:o.w,h:o.h},b))) o.x=nx;
+  if(!OBS.some(b=>hits({x:nx,y:o.y,w:o.w,h:o.h},b))) o.x=nx;
   let ny=clamp(o.y+dy,0,MAP-o.h);
-  if(!bl.some(b=>hits({x:o.x,y:ny,w:o.w,h:o.h},b))) o.y=ny;
+  if(!OBS.some(b=>hits({x:o.x,y:ny,w:o.w,h:o.h},b))) o.y=ny;
 }
 
-// Enemy move clamped to zone bounds
 function mvE(e,dx,dy){
   const z=ZN[e.zi], bl=OBS.concat(IW);
   let nx=clamp(e.x+dx,z.x,z.x+1000-e.w);
@@ -128,36 +106,132 @@ function mvE(e,dx,dy){
 function abl(){
   if(P.cd>0) return;
   P.cd=10;
-  if(di===0){
-    // Emberclaw: fire blast in facing direction
-    PJ.push({x:P.x+14,y:P.y+14,vx:fx*430,vy:fy*430,r:10,life:1.8});
-  } else if(di===1){
-    // Frostfang: ice wall perpendicular to movement, behind player
-    const px=P.x-fx*58-10, py=P.y-fy*58-10;
-    IW.push(Math.abs(fx)>Math.abs(fy)
-      ?{x:px,   y:py-58, w:20, h:136,life:3}
-      :{x:px-58,y:py,    w:136,h:20, life:3});
-  } else if(di===2){ P.spT=3;
-  } else if(di===3){ P.ivT=4;
-  } else if(di===4){
-    // Stormtalon: dash 230px in facing direction
-    P.x=clamp(P.x+fx*230,0,MAP-28);
-    P.y=clamp(P.y+fy*230,0,MAP-28);
+  const px=P.x+14, py=P.y+14;
+  if(lv===1){ ENS.forEach(e=>e.ft=5); }
+  else if(lv===2){ P.ivT=4; }
+  else if(lv===3){ P.spT=3; }
+  else if(lv===4){ P.x=clamp(P.x+fx*300,0,MAP-28); P.y=clamp(P.y+fy*300,0,MAP-28); }
+  else if(lv===5){
+    RINGS.push({x:px,y:py,r:10,maxR:180,life:1,ice:false});
+    ENS.forEach(e=>{
+      const ex=e.x+e.w/2, ey=e.y+e.h/2, d=hyp(px,py,ex,ey);
+      if(d<180){
+        const ang=Math.atan2(ey-py,ex-px), z=ZN[e.zi];
+        e.x=clamp(e.x+Math.cos(ang)*50, z.x, z.x+1000-e.w);
+        e.y=clamp(e.y+Math.sin(ang)*50, z.y, z.y+1000-e.h);
+        for(let j=0;j<5;j++) PTS.push({x:ex,y:ey,vx:rnd(-200,200),vy:rnd(-200,200),life:.5,c:'#ff6600'});
+      }
+    });
   } else {
-    // Shadowmend: freeze all enemies 5s
-    ENS.forEach(e=>e.ft=5);
+    RINGS.push({x:px,y:py,r:10,maxR:300,life:.8,ice:true});
+    ENS.forEach(e=>{if(hyp(px,py,e.x+e.w/2,e.y+e.h/2)<300) e.ft=2;});
+  }
+}
+
+// ── Zone-specific escalating behaviors ──────────────────────────────────────
+function updateZones(dt){
+  const px=P.x+14, py=P.y+14;
+
+  // ── Volcanic Wastes ──────────────────────────────────────────────────────
+  ZS[0].t5-=dt; ZS[0].t10-=dt; ZS[0].obsT-=dt;
+  // Speed boost every 5s
+  if(ZS[0].t5<=0){ ZS[0].t5=5; ENS.filter(e=>e.zi===0).forEach(e=>e.spd*=1.2); }
+  // Duplicate every 10s (max 4)
+  if(ZS[0].t10<=0){
+    ZS[0].t10=10;
+    const vs=ENS.filter(e=>e.zi===0);
+    if(vs.length>0&&vs.length<4){
+      const s=vs[0], z=ZN[0];
+      ENS.push({...s, x:clamp(s.x+rnd(-50,50),z.x+10,z.x+990-s.w), y:clamp(s.y+rnd(-50,50),z.y+10,z.y+990-s.h), ft:0});
+    }
+  }
+  // All volcanic obstacles slide to a new random position every 5s then stop abruptly
+  if(ZS[0].obsT<=0){
+    ZS[0].obsT=5;
+    const z=ZN[0];
+    OBS.filter(o=>o.zi===0).forEach(o=>{ o.tx=rnd(z.x+30,z.x+970); o.ty=rnd(z.y+30,z.y+970); });
+  }
+  OBS.filter(o=>o.zi===0&&o.tx!=null).forEach(o=>{
+    const ddx=o.tx-o.x, ddy=o.ty-o.y, dd=Math.hypot(ddx,ddy);
+    if(dd<5){ o.x=o.tx; o.y=o.ty; delete o.tx; delete o.ty; }
+    else{ o.x+=ddx/dd*620*dt; o.y+=ddy/dd*620*dt; }
+  });
+
+  // ── Glacial Peaks ────────────────────────────────────────────────────────
+  ZS[1].shot-=dt; ZS[1].grow-=dt; ZS[1].brk-=dt;
+  // Fire bullet toward player every 5s
+  if(ZS[1].shot<=0){
+    ZS[1].shot=5;
+    const fw=ENS.find(e=>e.zi===1);
+    if(fw){
+      const ang=Math.atan2(py-(fw.y+fw.h/2), px-(fw.x+fw.w/2));
+      BLTS.push({x:fw.x+fw.w/2, y:fw.y+fw.h/2, vx:Math.cos(ang)*360, vy:Math.sin(ang)*360, r:9});
+    }
+  }
+  // Frostwyrm grows 20% bigger every 5s
+  if(ZS[1].grow<=0){ ZS[1].grow=5; ENS.filter(e=>e.zi===1).forEach(e=>{e.w*=1.2; e.h*=1.2;}); }
+  // Breaks/destroys one random obstacle every 2.5s; it respawns after 8s
+  if(ZS[1].brk<=0){
+    ZS[1].brk=2.5;
+    const go=OBS.filter(o=>o.zi===1);
+    if(go.length){
+      const target=go[Math.floor(Math.random()*go.length)];
+      for(let j=0;j<5;j++) PTS.push({x:target.x+target.w/2,y:target.y+target.h/2,vx:rnd(-160,160),vy:rnd(-160,160),life:.7,c:'#aaddff'});
+      OBS.splice(OBS.indexOf(target),1);
+      ZS[1].resp.push({t:8});
+    }
+  }
+  ZS[1].resp=ZS[1].resp.filter(r=>{
+    r.t-=dt;
+    if(r.t<=0){ const z=ZN[1]; OBS.push({x:rnd(z.x+40,z.x+960),y:rnd(z.y+40,z.y+960),w:z.ow,h:z.oh,c:OBC[1],zi:1}); return false; }
+    return true;
+  });
+
+  // ── Sunken Reef ──────────────────────────────────────────────────────────
+  ZS[2].t5-=dt; ZS[2].t10-=dt;
+  if(ZS[2].t5<=0){ ZS[2].t5=5; ZS[2].amp+=0.45; } // wave grows more erratic
+  if(ZS[2].t10<=0){ ZS[2].t10=10; se(2); }
+  // Bounce reef obstacles around zone; knock back player and enemies on hit
+  OBS.filter(o=>o.zi===2&&o.vx!=null).forEach(o=>{
+    const z=ZN[2];
+    o.x+=o.vx*dt; o.y+=o.vy*dt;
+    if(o.x<=z.x||o.x+o.w>=z.x+1000){ o.vx=-o.vx; o.x=clamp(o.x,z.x,z.x+1000-o.w); }
+    if(o.y<=z.y||o.y+o.h>=z.y+1000){ o.vy=-o.vy; o.y=clamp(o.y,z.y,z.y+1000-o.h); }
+    const kb=(obj,cx,cy)=>{
+      const ang=Math.atan2(obj.y+obj.h/2-cy, obj.x+obj.w/2-cx);
+      obj.x=clamp(obj.x+Math.cos(ang)*40,0,MAP-obj.w);
+      obj.y=clamp(obj.y+Math.sin(ang)*40,0,MAP-obj.h);
+    };
+    if(hits(o,P)) kb(P, o.x+o.w/2, o.y+o.h/2);
+    ENS.filter(e=>e.zi===2&&hits(o,e)).forEach(e=>{
+      const z2=ZN[2], cx=o.x+o.w/2, cy=o.y+o.h/2, ang=Math.atan2(e.y+e.h/2-cy,e.x+e.w/2-cx);
+      e.x=clamp(e.x+Math.cos(ang)*40,z2.x,z2.x+1000-e.w);
+      e.y=clamp(e.y+Math.sin(ang)*40,z2.y,z2.y+1000-e.h);
+    });
+  });
+
+  // ── Ancient Canopy ───────────────────────────────────────────────────────
+  ZS[3].t10-=dt; ZS[3].t5-=dt; ZS[3].addT-=dt;
+  if(ZS[3].t10<=0){ ZS[3].t10=10; se(3); }                  // multiply
+  if(ZS[3].t5<=0){ ZS[3].t5=5; ZS[3].td+=50; }             // teleport range grows
+  if(ZS[3].addT<=0){                                         // escalating obstacle adds (1,2,3…)
+    ZS[3].addT=5; ZS[3].addN++;
+    const z=ZN[3];
+    for(let i=0;i<ZS[3].addN;i++)
+      OBS.push({x:rnd(z.x+30,z.x+970),y:rnd(z.y+30,z.y+970),w:z.ow,h:z.oh,c:OBC[3],zi:3});
   }
 }
 
 function tick(ts){
   if(dead||won) return;
-  const dt=Math.min((ts-(lts||ts))/1000,.05); lts=ts; gt+=dt;
+  const dt=Math.min((ts-(lts||ts))/1000,.05); lts=ts;
+  if(moved) gt+=dt;
 
-  // Every 30s: scale all enemies +20%, spawn one new per zone
-  if(Math.floor(gt/30)>st){
+  // Global 30s scaling: size+speed for all enemies, new spawn for non-Volcanic zones
+  if(moved && Math.floor(gt/30)>st){
     st++;
     ENS.forEach(e=>{e.w*=1.2; e.h*=1.2; e.spd*=1.2;});
-    ZN.forEach((_,zi)=>se(zi));
+    ZN.forEach((_,zi)=>{ if(zi!==0) se(zi); }); // Volcanic has its own spawn system
   }
 
   // Player input
@@ -168,16 +242,16 @@ function tick(ts){
   if(keys.ArrowDown ||keys.s||keys.S) dy++;
   if(dx||dy){
     const m=hyp(0,0,dx,dy); fx=dx/m; fy=dy/m;
+    if(!moved) moved=true;
     mv(P, fx*180*(P.spT>0?2:1)*dt, fy*180*(P.spT>0?2:1)*dt);
   }
   if(P.cd>0)  P.cd-=dt;
   if(P.spT>0) P.spT-=dt;
   if(P.ivT>0) P.ivT-=dt;
 
-  // Ice wall timers
   IW=IW.filter(w=>{w.life-=dt;return w.life>0;});
+  RINGS=RINGS.filter(r=>{r.life-=dt; r.r+=(r.maxR-10)/0.8*dt; return r.life>0;});
 
-  // Fire projectiles — destroy obstacles on hit
   PJ=PJ.filter(p=>{
     p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt;
     if(p.life<=0||p.x<0||p.x>MAP||p.y<0||p.y>MAP) return false;
@@ -190,29 +264,35 @@ function tick(ts){
     return true;
   });
 
-  // Enemies
-  ENS.forEach(e=>{
+  if(moved) updateZones(dt);
+
+  // Glacial bullets — kill player on contact, expire outside Glacial zone
+  BLTS=BLTS.filter(b=>{
+    b.x+=b.vx*dt; b.y+=b.vy*dt;
+    if(b.x<1000||b.x>2000||b.y<0||b.y>1000) return false;
+    if(hits({x:b.x-b.r,y:b.y-b.r,w:b.r*2,h:b.r*2},P)){ endG(false); return false; }
+    return true;
+  });
+
+  // Enemies frozen until player first moves
+  if(moved) ENS.forEach(e=>{
     if(e.ft>0){e.ft-=dt;return;}
-    if(P.ivT>0) return; // invisible — can't be targeted
-    const px=P.x+14, py=P.y+14;
-    const ang=Math.atan2(py-(e.y+e.h/2), px-(e.x+e.w/2));
-    if(e.zi===0){
-      // Magmawyrm: fast direct chaser
-      mvE(e,Math.cos(ang)*e.spd*dt, Math.sin(ang)*e.spd*dt);
-    } else if(e.zi===1){
-      // Frostwyrm: slow but huge
+    if(P.ivT>0) return;
+    const epx=P.x+14, epy=P.y+14;
+    const ang=Math.atan2(epy-(e.y+e.h/2), epx-(e.x+e.w/2));
+    if(e.zi===0||e.zi===1){
       mvE(e,Math.cos(ang)*e.spd*dt, Math.sin(ang)*e.spd*dt);
     } else if(e.zi===2){
-      // Tidewyrm: sinusoidal wave movement
+      // Tidewyrm: sinusoidal wave; amplitude escalates via ZS[2].amp
       e.wt+=dt*2;
-      const wa=ang+Math.sin(e.wt)*1.6;
+      const wa=ang+Math.sin(e.wt)*ZS[2].amp;
       mvE(e,Math.cos(wa)*e.spd*dt, Math.sin(wa)*e.spd*dt);
     } else {
-      // Thornwyrm: teleports short distances toward player
+      // Thornwyrm: teleport distance escalates via ZS[3].td
       e.tcd-=dt;
       if(e.tcd<=0){
         e.tcd=1.5+rnd(0,1.5);
-        const td=80+rnd(0,90), z=ZN[3];
+        const td=ZS[3].td+rnd(0,40), z=ZN[3];
         e.x=clamp(e.x+Math.cos(ang)*td, z.x, z.x+1000-e.w);
         e.y=clamp(e.y+Math.sin(ang)*td, z.y, z.y+1000-e.h);
       }
@@ -220,7 +300,6 @@ function tick(ts){
     if(hits(e,P)) endG(false);
   });
 
-  // Zone eggs
   EGS.forEach(e=>{
     if(e.done) return;
     e.t+=dt*3;
@@ -230,41 +309,48 @@ function tick(ts){
     }
   });
 
-  // Spawn golden egg once all 4 zone eggs collected
   if(!GE && EGS.every(e=>e.done))
     GE={x:rnd(250,1750),y:rnd(250,1750),r:16,t:0};
-
-  // Collect golden egg → win
   if(GE){
     GE.t+=dt*4;
     if(hits({x:GE.x-GE.r,y:GE.y-GE.r,w:GE.r*2,h:GE.r*2},P)) endG(true);
   }
 
-  // Particles
   PTS=PTS.filter(p=>{p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt; return p.life>0;});
-
   draw();
   requestAnimationFrame(tick);
 }
 
 function endG(w){
   won=w; dead=!w;
-  document.getElementById('oT').textContent=w?'You Win! 🏆':'Game Over 💀';
-  document.getElementById('oM').textContent=w
-    ?`All eggs collected in ${Math.floor(gt/60)}:${(gt%60|0).toString().padStart(2,'0')}!`
-    :'A dragon enemy caught you!';
+  const d=LV[lv-1];
+  const oT=document.getElementById('oT'), oM=document.getElementById('oM'), oBtn=document.getElementById('oBtn');
+  if(w && lv<6){
+    oT.style.color='#ffd700'; oT.textContent=`Level ${lv} Complete! 🏆`;
+    oM.textContent=`You collected all eggs as ${d.n}!\nNext up: Level ${lv+1} — ${LV[lv].n} ${LV[lv].em}`;
+    oBtn.textContent='Next Level →'; oBtn.style.background='#ffd700'; oBtn.style.color='#111';
+    oBtn.onclick=()=>startLevel(lv+1);
+  } else if(w){
+    oT.style.color='#ffd700'; oT.textContent='Dragon Master! 🌟';
+    oM.textContent='You completed all 6 levels and mastered every dragon. Legendary!';
+    oBtn.textContent='Play Again'; oBtn.style.background='#ffd700'; oBtn.style.color='#111';
+    oBtn.onclick=()=>startLevel(1);
+  } else {
+    oT.style.color='#ff4444'; oT.textContent='Game Over 💀';
+    oM.textContent=`A dragon enemy caught you!\nReturning to Level 1 — Shadowmend 🌑`;
+    oBtn.textContent='Try Again'; oBtn.style.background='#ff4444'; oBtn.style.color='#fff';
+    oBtn.onclick=()=>startLevel(1);
+  }
   document.getElementById('ov').style.display='flex';
 }
 
 function draw(){
-  const W=cv.width, H=cv.height;
-  // Camera: center on player, clamped to map
+  const W=cv.width, H=cv.height, d=LV[lv-1];
   const camx=clamp(P.x+14-W/2, 0, MAP-W);
   const camy=clamp(P.y+14-H/2, 0, MAP-H);
   ctx.clearRect(0,0,W,H);
   ctx.save(); ctx.translate(-camx,-camy);
 
-  // Zone backgrounds
   ZN.forEach(z=>{
     ctx.fillStyle=z.bg; ctx.fillRect(z.x,z.y,1000,1000);
     ctx.strokeStyle=z.ac+'40'; ctx.lineWidth=4; ctx.strokeRect(z.x,z.y,1000,1000);
@@ -272,50 +358,65 @@ function draw(){
     ctx.textAlign='left'; ctx.textBaseline='top'; ctx.fillText(z.n,z.x+14,z.y+14);
   });
 
-  // Subtle grid
   ctx.strokeStyle='rgba(255,255,255,0.03)'; ctx.lineWidth=1;
   for(let i=0;i<=MAP;i+=200){
     ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,MAP);ctx.stroke();
     ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(MAP,i);ctx.stroke();
   }
 
-  // Obstacles
+  // Obstacles — volcanic ones glow orange while sliding; reef ones glow teal while moving
   OBS.forEach(o=>{
     ctx.fillStyle=o.c; ctx.fillRect(o.x,o.y,o.w,o.h);
-    ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=1; ctx.strokeRect(o.x,o.y,o.w,o.h);
+    const sliding=o.zi===0&&o.tx!=null, bouncing=o.zi===2&&o.vx!=null;
+    ctx.strokeStyle=sliding?'#ff8800':bouncing?'#00ddbb':'rgba(255,255,255,0.12)';
+    ctx.lineWidth=sliding||bouncing?2:1;
+    ctx.strokeRect(o.x,o.y,o.w,o.h);
   });
 
-  // Ice walls
   IW.forEach(w=>{
     ctx.fillStyle='rgba(153,204,255,0.82)'; ctx.fillRect(w.x,w.y,w.w,w.h);
     ctx.strokeStyle='#cce8ff'; ctx.lineWidth=2; ctx.strokeRect(w.x,w.y,w.w,w.h);
   });
 
-  // Zone eggs (glowing pulse)
-  EGS.forEach(e=>{
-    if(e.done) return;
-    const glow=Math.sin(e.t)*5+e.r+4;
-    ctx.beginPath(); ctx.arc(e.x,e.y,glow,0,6.28); ctx.fillStyle='rgba(255,255,0,0.12)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,6.28); ctx.fillStyle='#ffffcc'; ctx.fill();
-    ctx.strokeStyle='#ffff00'; ctx.lineWidth=2; ctx.stroke();
-    ctx.font='13px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('🥚',e.x,e.y);
+  RINGS.forEach(r=>{
+    const alpha=Math.max(0,r.life)*(r.ice?.7:.6);
+    ctx.beginPath(); ctx.arc(r.x,r.y,r.r,0,6.28);
+    ctx.strokeStyle=r.ice?`rgba(140,210,255,${alpha})`:`rgba(255,100,0,${alpha})`;
+    ctx.lineWidth=r.ice?10:12; ctx.stroke();
   });
 
-  // Golden egg
+  // Glacial ice bullets
+  BLTS.forEach(b=>{
+    ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,6.28);
+    ctx.fillStyle='#ccecff'; ctx.fill();
+    ctx.strokeStyle='#ffffff'; ctx.lineWidth=2; ctx.stroke();
+    // trailing glow
+    ctx.beginPath(); ctx.arc(b.x,b.y,b.r+5,0,6.28);
+    ctx.strokeStyle='rgba(136,204,255,0.4)'; ctx.lineWidth=4; ctx.stroke();
+  });
+
+  EGS.forEach(e=>{
+    if(e.done) return;
+    ctx.beginPath(); ctx.arc(e.x,e.y,Math.sin(e.t)*5+e.r+4,0,6.28);
+    ctx.fillStyle='rgba(255,255,0,0.12)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,6.28);
+    ctx.fillStyle='#ffffcc'; ctx.fill(); ctx.strokeStyle='#ffff00'; ctx.lineWidth=2; ctx.stroke();
+    ctx.font='13px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🥚',e.x,e.y);
+  });
+
   if(GE){
-    const glow=Math.sin(GE.t)*10+GE.r+6;
-    ctx.beginPath(); ctx.arc(GE.x,GE.y,glow,0,6.28); ctx.fillStyle='rgba(255,215,0,0.25)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(GE.x,GE.y,Math.sin(GE.t)*10+GE.r+6,0,6.28);
+    ctx.fillStyle='rgba(255,215,0,0.25)'; ctx.fill();
     ctx.beginPath(); ctx.arc(GE.x,GE.y,GE.r,0,6.28);
     ctx.fillStyle='#ffd700'; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.stroke();
     ctx.font='22px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🥚',GE.x,GE.y);
   }
 
-  // Enemies
   ENS.forEach(e=>{
     ctx.save();
-    if(e.ft>0) ctx.globalAlpha=.5;
-    ctx.fillStyle=e.ft>0?'#aaddff':e.c;
+    const frozen=e.ft>0||!moved;
+    if(frozen) ctx.globalAlpha=.5;
+    ctx.fillStyle=frozen?'#aaddff':e.c;
     ctx.fillRect(e.x,e.y,e.w,e.h);
     ctx.font=`${clamp(e.w*.75,10,26)}px serif`;
     ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -323,13 +424,11 @@ function draw(){
     ctx.restore();
   });
 
-  // Fire projectiles
   PJ.forEach(p=>{
     ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.28); ctx.fillStyle='#ff6600'; ctx.fill();
     ctx.strokeStyle='rgba(255,170,0,0.5)'; ctx.lineWidth=5; ctx.stroke();
   });
 
-  // Particles
   ctx.save();
   PTS.forEach(p=>{
     ctx.globalAlpha=Math.max(0,p.life);
@@ -337,40 +436,38 @@ function draw(){
   });
   ctx.restore();
 
-  // Player
   ctx.save();
   if(P.ivT>0) ctx.globalAlpha=.3;
   ctx.font='30px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(DR[di].em, P.x+14, P.y+14);
+  ctx.fillText(d.em, P.x+14, P.y+14);
   ctx.restore();
 
-  ctx.restore(); // end camera transform
+  ctx.restore();
 
-  // HUD
   const col=EGS.filter(e=>e.done).length;
   const mins=Math.floor(gt/60), secs=(gt%60|0).toString().padStart(2,'0');
   document.getElementById('hud').innerHTML=
+    `<b style="color:${d.c}">${d.em} ${d.n}</b> <span style="color:#666;font-size:.85em">Lv ${lv}/6</span><br>`+
     `⏱ ${mins}:${secs} &nbsp;|&nbsp; 🥚 ${col}/4`+
     (GE?'<br><b style="color:#ffd700">✨ Find the Golden Egg!</b>':'')+
+    (!moved?'<br><span style="color:#aaa;font-size:.9em">Move to begin!</span>':'')+
     (P.ivT>0?`<br><span style="color:#88ff88">👁 Invisible ${P.ivT.toFixed(1)}s</span>`:'')+
     (P.spT>0?`<br><span style="color:#88ccff">⚡ Speed ${P.spT.toFixed(1)}s</span>`:'');
 
   const cd=document.getElementById('cdbar');
   cd.style.color=P.cd>0?'#888':'#ffd700';
-  cd.textContent=P.cd>0?`[SPACE] Recharging ${P.cd.toFixed(1)}s…`:`[SPACE] ${DR[di].ab}`;
+  cd.textContent=P.cd>0?`[SPACE] Recharging ${P.cd.toFixed(1)}s…`:`[SPACE] ${d.ab}`;
 }
 
 document.addEventListener('keydown',e=>{
   keys[e.key]=true;
-  if(e.key===' '){e.preventDefault(); if(P&&!dead&&!won) abl();}
+  if(e.key===' '){e.preventDefault(); if(P&&!dead&&!won&&moved) abl();}
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
 });
 document.addEventListener('keyup',e=>{keys[e.key]=false;});
-window.addEventListener('resize',()=>{
-  if(document.getElementById('game').style.display!=='none'){
-    cv.width=innerWidth; cv.height=innerHeight;
-  }
-});
+window.addEventListener('resize',()=>{cv.width=innerWidth; cv.height=innerHeight;});
+
+startLevel(1);
 </script>
 </body>
 </html>
