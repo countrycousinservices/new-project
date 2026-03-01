@@ -18,7 +18,6 @@ canvas{display:block}
 <div id="ov"><h2 id="oT"></h2><p id="oM"></p><button id="oBtn"></button></div>
 
 <script>
-// Level 1–6 dragon roster
 const LV=[
   {em:'🌑',c:'#aa44cc',n:'Shadowmend',el:'Dark',  ab:'Freeze all enemies for 5s'},
   {em:'🌿',c:'#44bb44',n:'Verdenwing',el:'Forest',ab:'Invisible to enemies for 4s'},
@@ -27,8 +26,6 @@ const LV=[
   {em:'🔥',c:'#ff4400',n:'Emberclaw', el:'Fire',  ab:'Fire ring — knocks enemies back 50px'},
   {em:'❄️',c:'#4499ff',n:'Frostfang', el:'Ice',   ab:'Freeze nearby enemies for 2s'},
 ];
-
-// 4 map zones (each 1000×1000 quadrant of 2000×2000 map)
 const ZN=[
   {n:'Volcanic Wastes', x:0,    y:0,    bg:'#1a0300',ac:'#ff4400',ec:'#ff3300',ow:54,oh:26},
   {n:'Glacial Peaks',   x:1000, y:0,    bg:'#000d1e',ac:'#88ccff',ec:'#66aaee',ow:14,oh:74},
@@ -40,7 +37,7 @@ const ESP=[210,78,145,125], ESZ=[20,46,20,20];
 
 const cv=document.getElementById('c'), ctx=cv.getContext('2d');
 const MAP=2000;
-let P,ENS,OBS,EGS,GE,PTS,IW,PJ,RINGS,gt,lts,st,lv,dead,won,keys={},fx=1,fy=0,moved;
+let P,ENS,OBS,EGS,GE,PTS,IW,PJ,RINGS,BLTS,ZS,gt,lts,st,lv,dead,won,keys={},fx=1,fy=0,moved;
 
 const hyp=(ax,ay,bx,by)=>Math.hypot(ax-bx,ay-by);
 const hits=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
@@ -49,19 +46,34 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
 function startLevel(level){
   lv=level; dead=won=false; gt=0; st=0; lts=null; moved=false;
-  // Player starts at exact map center
   P={x:986,y:986,w:28,h:28,cd:0,spT:0,ivT:0};
-  ENS=[]; OBS=[]; EGS=[]; IW=[]; PJ=[]; PTS=[]; RINGS=[]; GE=null;
+  ENS=[]; OBS=[]; EGS=[]; IW=[]; PJ=[]; PTS=[]; RINGS=[]; BLTS=[]; GE=null;
+  // Per-zone state: timers and escalating variables
+  ZS=[
+    {t5:5, t10:10, obsT:5},                      // Volcanic: speed/dup/slide timers
+    {shot:5, grow:5, brk:2.5, resp:[]},           // Glacial: shoot/grow/break/respawn queue
+    {t5:5, t10:10, amp:1.6},                      // Sunken Reef: amplitude/multiply timers
+    {t10:10, t5:5, td:80, addT:5, addN:0},        // Canopy: multiply/jump range/obstacle-add timers
+  ];
   ZN.forEach((z,zi)=>{
     for(let i=0;i<12;i++){
       let ox,oy;
       do{ ox=rnd(z.x+40,z.x+960); oy=rnd(z.y+40,z.y+960); }
       while(hyp(ox,oy,1000,1000)<280);
-      OBS.push({x:ox,y:oy,w:z.ow,h:z.oh,c:OBC[zi]});
+      const o={x:ox,y:oy,w:z.ow,h:z.oh,c:OBC[zi],zi};
+      // Sunken Reef obstacles bounce; give them a random velocity
+      if(zi===2){ o.vx=(Math.random()<.5?-1:1)*rnd(55,110); o.vy=(Math.random()<.5?-1:1)*rnd(55,110); }
+      OBS.push(o);
     }
     EGS.push({x:rnd(z.x+200,z.x+800),y:rnd(z.y+200,z.y+800),r:12,done:false,t:0});
-    se(zi); se(zi);
   });
+  // Zone-specific initial spawns
+  const vz=ZN[0];
+  // Volcanic: exactly 1 Magmawyrm at HALF speed
+  ENS.push({x:rnd(vz.x+80,vz.x+920),y:rnd(vz.y+80,vz.y+920),w:ESZ[0],h:ESZ[0],spd:ESP[0]*.5,c:vz.ec,zi:0,ft:0,wt:0,tcd:0});
+  se(1);        // Glacial: 1 Frostwyrm
+  se(2); se(2); // Sunken Reef: 2 Tidewyrms
+  se(3); se(3); // Ancient Canopy: 2 Thornwyrms
   document.getElementById('ov').style.display='none';
   cv.width=innerWidth; cv.height=innerHeight;
   requestAnimationFrame(tick);
@@ -95,21 +107,11 @@ function abl(){
   if(P.cd>0) return;
   P.cd=10;
   const px=P.x+14, py=P.y+14;
-  if(lv===1){
-    // Shadowmend: freeze all enemies 5s
-    ENS.forEach(e=>e.ft=5);
-  } else if(lv===2){
-    // Verdenwing: invisible 4s
-    P.ivT=4;
-  } else if(lv===3){
-    // Tidesong: 2× speed 3s
-    P.spT=3;
-  } else if(lv===4){
-    // Stormtalon: dash 300px forward
-    P.x=clamp(P.x+fx*300,0,MAP-28);
-    P.y=clamp(P.y+fy*300,0,MAP-28);
-  } else if(lv===5){
-    // Emberclaw: expanding fire ring, knocks all enemies within 180px back 50px
+  if(lv===1){ ENS.forEach(e=>e.ft=5); }
+  else if(lv===2){ P.ivT=4; }
+  else if(lv===3){ P.spT=3; }
+  else if(lv===4){ P.x=clamp(P.x+fx*300,0,MAP-28); P.y=clamp(P.y+fy*300,0,MAP-28); }
+  else if(lv===5){
     RINGS.push({x:px,y:py,r:10,maxR:180,life:1,ice:false});
     ENS.forEach(e=>{
       const ex=e.x+e.w/2, ey=e.y+e.h/2, d=hyp(px,py,ex,ey);
@@ -120,12 +122,103 @@ function abl(){
         for(let j=0;j<5;j++) PTS.push({x:ex,y:ey,vx:rnd(-200,200),vy:rnd(-200,200),life:.5,c:'#ff6600'});
       }
     });
-  } else if(lv===6){
-    // Frostfang: freeze nearby enemies (within 300px) for 2s
+  } else {
     RINGS.push({x:px,y:py,r:10,maxR:300,life:.8,ice:true});
-    ENS.forEach(e=>{
-      if(hyp(px,py,e.x+e.w/2,e.y+e.h/2)<300) e.ft=2;
+    ENS.forEach(e=>{if(hyp(px,py,e.x+e.w/2,e.y+e.h/2)<300) e.ft=2;});
+  }
+}
+
+// ── Zone-specific escalating behaviors ──────────────────────────────────────
+function updateZones(dt){
+  const px=P.x+14, py=P.y+14;
+
+  // ── Volcanic Wastes ──────────────────────────────────────────────────────
+  ZS[0].t5-=dt; ZS[0].t10-=dt; ZS[0].obsT-=dt;
+  // Speed boost every 5s
+  if(ZS[0].t5<=0){ ZS[0].t5=5; ENS.filter(e=>e.zi===0).forEach(e=>e.spd*=1.2); }
+  // Duplicate every 10s (max 4)
+  if(ZS[0].t10<=0){
+    ZS[0].t10=10;
+    const vs=ENS.filter(e=>e.zi===0);
+    if(vs.length>0&&vs.length<4){
+      const s=vs[0], z=ZN[0];
+      ENS.push({...s, x:clamp(s.x+rnd(-50,50),z.x+10,z.x+990-s.w), y:clamp(s.y+rnd(-50,50),z.y+10,z.y+990-s.h), ft:0});
+    }
+  }
+  // All volcanic obstacles slide to a new random position every 5s then stop abruptly
+  if(ZS[0].obsT<=0){
+    ZS[0].obsT=5;
+    const z=ZN[0];
+    OBS.filter(o=>o.zi===0).forEach(o=>{ o.tx=rnd(z.x+30,z.x+970); o.ty=rnd(z.y+30,z.y+970); });
+  }
+  OBS.filter(o=>o.zi===0&&o.tx!=null).forEach(o=>{
+    const ddx=o.tx-o.x, ddy=o.ty-o.y, dd=Math.hypot(ddx,ddy);
+    if(dd<5){ o.x=o.tx; o.y=o.ty; delete o.tx; delete o.ty; }
+    else{ o.x+=ddx/dd*620*dt; o.y+=ddy/dd*620*dt; }
+  });
+
+  // ── Glacial Peaks ────────────────────────────────────────────────────────
+  ZS[1].shot-=dt; ZS[1].grow-=dt; ZS[1].brk-=dt;
+  // Fire bullet toward player every 5s
+  if(ZS[1].shot<=0){
+    ZS[1].shot=5;
+    const fw=ENS.find(e=>e.zi===1);
+    if(fw){
+      const ang=Math.atan2(py-(fw.y+fw.h/2), px-(fw.x+fw.w/2));
+      BLTS.push({x:fw.x+fw.w/2, y:fw.y+fw.h/2, vx:Math.cos(ang)*360, vy:Math.sin(ang)*360, r:9});
+    }
+  }
+  // Frostwyrm grows 20% bigger every 5s
+  if(ZS[1].grow<=0){ ZS[1].grow=5; ENS.filter(e=>e.zi===1).forEach(e=>{e.w*=1.2; e.h*=1.2;}); }
+  // Breaks/destroys one random obstacle every 2.5s; it respawns after 8s
+  if(ZS[1].brk<=0){
+    ZS[1].brk=2.5;
+    const go=OBS.filter(o=>o.zi===1);
+    if(go.length){
+      const target=go[Math.floor(Math.random()*go.length)];
+      for(let j=0;j<5;j++) PTS.push({x:target.x+target.w/2,y:target.y+target.h/2,vx:rnd(-160,160),vy:rnd(-160,160),life:.7,c:'#aaddff'});
+      OBS.splice(OBS.indexOf(target),1);
+      ZS[1].resp.push({t:8});
+    }
+  }
+  ZS[1].resp=ZS[1].resp.filter(r=>{
+    r.t-=dt;
+    if(r.t<=0){ const z=ZN[1]; OBS.push({x:rnd(z.x+40,z.x+960),y:rnd(z.y+40,z.y+960),w:z.ow,h:z.oh,c:OBC[1],zi:1}); return false; }
+    return true;
+  });
+
+  // ── Sunken Reef ──────────────────────────────────────────────────────────
+  ZS[2].t5-=dt; ZS[2].t10-=dt;
+  if(ZS[2].t5<=0){ ZS[2].t5=5; ZS[2].amp+=0.45; } // wave grows more erratic
+  if(ZS[2].t10<=0){ ZS[2].t10=10; se(2); }
+  // Bounce reef obstacles around zone; knock back player and enemies on hit
+  OBS.filter(o=>o.zi===2&&o.vx!=null).forEach(o=>{
+    const z=ZN[2];
+    o.x+=o.vx*dt; o.y+=o.vy*dt;
+    if(o.x<=z.x||o.x+o.w>=z.x+1000){ o.vx=-o.vx; o.x=clamp(o.x,z.x,z.x+1000-o.w); }
+    if(o.y<=z.y||o.y+o.h>=z.y+1000){ o.vy=-o.vy; o.y=clamp(o.y,z.y,z.y+1000-o.h); }
+    const kb=(obj,cx,cy)=>{
+      const ang=Math.atan2(obj.y+obj.h/2-cy, obj.x+obj.w/2-cx);
+      obj.x=clamp(obj.x+Math.cos(ang)*40,0,MAP-obj.w);
+      obj.y=clamp(obj.y+Math.sin(ang)*40,0,MAP-obj.h);
+    };
+    if(hits(o,P)) kb(P, o.x+o.w/2, o.y+o.h/2);
+    ENS.filter(e=>e.zi===2&&hits(o,e)).forEach(e=>{
+      const z2=ZN[2], cx=o.x+o.w/2, cy=o.y+o.h/2, ang=Math.atan2(e.y+e.h/2-cy,e.x+e.w/2-cx);
+      e.x=clamp(e.x+Math.cos(ang)*40,z2.x,z2.x+1000-e.w);
+      e.y=clamp(e.y+Math.sin(ang)*40,z2.y,z2.y+1000-e.h);
     });
+  });
+
+  // ── Ancient Canopy ───────────────────────────────────────────────────────
+  ZS[3].t10-=dt; ZS[3].t5-=dt; ZS[3].addT-=dt;
+  if(ZS[3].t10<=0){ ZS[3].t10=10; se(3); }                  // multiply
+  if(ZS[3].t5<=0){ ZS[3].t5=5; ZS[3].td+=50; }             // teleport range grows
+  if(ZS[3].addT<=0){                                         // escalating obstacle adds (1,2,3…)
+    ZS[3].addT=5; ZS[3].addN++;
+    const z=ZN[3];
+    for(let i=0;i<ZS[3].addN;i++)
+      OBS.push({x:rnd(z.x+30,z.x+970),y:rnd(z.y+30,z.y+970),w:z.ow,h:z.oh,c:OBC[3],zi:3});
   }
 }
 
@@ -134,11 +227,11 @@ function tick(ts){
   const dt=Math.min((ts-(lts||ts))/1000,.05); lts=ts;
   if(moved) gt+=dt;
 
-  // Scale enemies every 30s of active play time
+  // Global 30s scaling: size+speed for all enemies, new spawn for non-Volcanic zones
   if(moved && Math.floor(gt/30)>st){
     st++;
     ENS.forEach(e=>{e.w*=1.2; e.h*=1.2; e.spd*=1.2;});
-    ZN.forEach((_,zi)=>se(zi));
+    ZN.forEach((_,zi)=>{ if(zi!==0) se(zi); }); // Volcanic has its own spawn system
   }
 
   // Player input
@@ -157,7 +250,6 @@ function tick(ts){
   if(P.ivT>0) P.ivT-=dt;
 
   IW=IW.filter(w=>{w.life-=dt;return w.life>0;});
-  // Rings expand then fade
   RINGS=RINGS.filter(r=>{r.life-=dt; r.r+=(r.maxR-10)/0.8*dt; return r.life>0;});
 
   PJ=PJ.filter(p=>{
@@ -172,26 +264,35 @@ function tick(ts){
     return true;
   });
 
+  if(moved) updateZones(dt);
+
+  // Glacial bullets — kill player on contact, expire outside Glacial zone
+  BLTS=BLTS.filter(b=>{
+    b.x+=b.vx*dt; b.y+=b.vy*dt;
+    if(b.x<1000||b.x>2000||b.y<0||b.y>1000) return false;
+    if(hits({x:b.x-b.r,y:b.y-b.r,w:b.r*2,h:b.r*2},P)){ endG(false); return false; }
+    return true;
+  });
+
   // Enemies frozen until player first moves
   if(moved) ENS.forEach(e=>{
     if(e.ft>0){e.ft-=dt;return;}
     if(P.ivT>0) return;
-    const px=P.x+14, py=P.y+14;
-    const ang=Math.atan2(py-(e.y+e.h/2), px-(e.x+e.w/2));
+    const epx=P.x+14, epy=P.y+14;
+    const ang=Math.atan2(epy-(e.y+e.h/2), epx-(e.x+e.w/2));
     if(e.zi===0||e.zi===1){
-      // Magmawyrm (fast) & Frostwyrm (slow/huge): direct chasers
       mvE(e,Math.cos(ang)*e.spd*dt, Math.sin(ang)*e.spd*dt);
     } else if(e.zi===2){
-      // Tidewyrm: sinusoidal wave path
+      // Tidewyrm: sinusoidal wave; amplitude escalates via ZS[2].amp
       e.wt+=dt*2;
-      const wa=ang+Math.sin(e.wt)*1.6;
+      const wa=ang+Math.sin(e.wt)*ZS[2].amp;
       mvE(e,Math.cos(wa)*e.spd*dt, Math.sin(wa)*e.spd*dt);
     } else {
-      // Thornwyrm: short teleport bursts toward player
+      // Thornwyrm: teleport distance escalates via ZS[3].td
       e.tcd-=dt;
       if(e.tcd<=0){
         e.tcd=1.5+rnd(0,1.5);
-        const td=80+rnd(0,90), z=ZN[3];
+        const td=ZS[3].td+rnd(0,40), z=ZN[3];
         e.x=clamp(e.x+Math.cos(ang)*td, z.x, z.x+1000-e.w);
         e.y=clamp(e.y+Math.sin(ang)*td, z.y, z.y+1000-e.h);
       }
@@ -199,7 +300,6 @@ function tick(ts){
     if(hits(e,P)) endG(false);
   });
 
-  // Collect zone eggs
   EGS.forEach(e=>{
     if(e.done) return;
     e.t+=dt*3;
@@ -251,7 +351,6 @@ function draw(){
   ctx.clearRect(0,0,W,H);
   ctx.save(); ctx.translate(-camx,-camy);
 
-  // Zone backgrounds
   ZN.forEach(z=>{
     ctx.fillStyle=z.bg; ctx.fillRect(z.x,z.y,1000,1000);
     ctx.strokeStyle=z.ac+'40'; ctx.lineWidth=4; ctx.strokeRect(z.x,z.y,1000,1000);
@@ -259,26 +358,26 @@ function draw(){
     ctx.textAlign='left'; ctx.textBaseline='top'; ctx.fillText(z.n,z.x+14,z.y+14);
   });
 
-  // Subtle grid
   ctx.strokeStyle='rgba(255,255,255,0.03)'; ctx.lineWidth=1;
   for(let i=0;i<=MAP;i+=200){
     ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,MAP);ctx.stroke();
     ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(MAP,i);ctx.stroke();
   }
 
-  // Obstacles
+  // Obstacles — volcanic ones glow orange while sliding; reef ones glow teal while moving
   OBS.forEach(o=>{
     ctx.fillStyle=o.c; ctx.fillRect(o.x,o.y,o.w,o.h);
-    ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=1; ctx.strokeRect(o.x,o.y,o.w,o.h);
+    const sliding=o.zi===0&&o.tx!=null, bouncing=o.zi===2&&o.vx!=null;
+    ctx.strokeStyle=sliding?'#ff8800':bouncing?'#00ddbb':'rgba(255,255,255,0.12)';
+    ctx.lineWidth=sliding||bouncing?2:1;
+    ctx.strokeRect(o.x,o.y,o.w,o.h);
   });
 
-  // Ice walls (Frostfang lv1 ability — unused in lv6 but kept for future)
   IW.forEach(w=>{
     ctx.fillStyle='rgba(153,204,255,0.82)'; ctx.fillRect(w.x,w.y,w.w,w.h);
     ctx.strokeStyle='#cce8ff'; ctx.lineWidth=2; ctx.strokeRect(w.x,w.y,w.w,w.h);
   });
 
-  // Ability rings (fire ring lv5 / frost ring lv6)
   RINGS.forEach(r=>{
     const alpha=Math.max(0,r.life)*(r.ice?.7:.6);
     ctx.beginPath(); ctx.arc(r.x,r.y,r.r,0,6.28);
@@ -286,7 +385,16 @@ function draw(){
     ctx.lineWidth=r.ice?10:12; ctx.stroke();
   });
 
-  // Zone eggs
+  // Glacial ice bullets
+  BLTS.forEach(b=>{
+    ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,6.28);
+    ctx.fillStyle='#ccecff'; ctx.fill();
+    ctx.strokeStyle='#ffffff'; ctx.lineWidth=2; ctx.stroke();
+    // trailing glow
+    ctx.beginPath(); ctx.arc(b.x,b.y,b.r+5,0,6.28);
+    ctx.strokeStyle='rgba(136,204,255,0.4)'; ctx.lineWidth=4; ctx.stroke();
+  });
+
   EGS.forEach(e=>{
     if(e.done) return;
     ctx.beginPath(); ctx.arc(e.x,e.y,Math.sin(e.t)*5+e.r+4,0,6.28);
@@ -296,7 +404,6 @@ function draw(){
     ctx.font='13px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🥚',e.x,e.y);
   });
 
-  // Golden egg
   if(GE){
     ctx.beginPath(); ctx.arc(GE.x,GE.y,Math.sin(GE.t)*10+GE.r+6,0,6.28);
     ctx.fillStyle='rgba(255,215,0,0.25)'; ctx.fill();
@@ -305,7 +412,6 @@ function draw(){
     ctx.font='22px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🥚',GE.x,GE.y);
   }
 
-  // Enemies
   ENS.forEach(e=>{
     ctx.save();
     const frozen=e.ft>0||!moved;
@@ -318,13 +424,11 @@ function draw(){
     ctx.restore();
   });
 
-  // Fire projectiles (unused at lv1-4,6 but available)
   PJ.forEach(p=>{
     ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.28); ctx.fillStyle='#ff6600'; ctx.fill();
     ctx.strokeStyle='rgba(255,170,0,0.5)'; ctx.lineWidth=5; ctx.stroke();
   });
 
-  // Particles
   ctx.save();
   PTS.forEach(p=>{
     ctx.globalAlpha=Math.max(0,p.life);
@@ -332,16 +436,14 @@ function draw(){
   });
   ctx.restore();
 
-  // Player
   ctx.save();
   if(P.ivT>0) ctx.globalAlpha=.3;
   ctx.font='30px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText(d.em, P.x+14, P.y+14);
   ctx.restore();
 
-  ctx.restore(); // end camera
+  ctx.restore();
 
-  // HUD
   const col=EGS.filter(e=>e.done).length;
   const mins=Math.floor(gt/60), secs=(gt%60|0).toString().padStart(2,'0');
   document.getElementById('hud').innerHTML=
